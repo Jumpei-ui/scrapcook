@@ -39,11 +39,43 @@ export const Equipment = {
   coldMeals: 'coldMeals',
 } as const;
 
+/**
+ * Maximum recipe time in minutes; zero means no limit
+ */
+export type MaxReadyTime = typeof MaxReadyTime[keyof typeof MaxReadyTime];
+
+
+export const MaxReadyTime = {
+  NUMBER_0: 0,
+  NUMBER_15: 15,
+  NUMBER_30: 30,
+  NUMBER_45: 45,
+  NUMBER_60: 60,
+  NUMBER_90: 90,
+  NUMBER_120: 120,
+  NUMBER_180: 180,
+} as const;
+
+export type DietPreference = typeof DietPreference[keyof typeof DietPreference];
+
+
+export const DietPreference = {
+  none: 'none',
+  vegetarian: 'vegetarian',
+  vegan: 'vegan',
+  pescetarian: 'pescetarian',
+  glutenFree: 'glutenFree',
+  ketogenic: 'ketogenic',
+  paleo: 'paleo',
+} as const;
+
 export interface CookingPreferences {
   experience: CookingExperience;
   timeAvailable: CookingTime;
   /** @minItems 1 */
   equipment: Equipment[];
+  maxReadyTime: MaxReadyTime;
+  diet: DietPreference;
 }
 
 export interface ScrapCookSessionInput {
@@ -84,10 +116,13 @@ export interface RecipeIngredient {
   inFridge: boolean;
 }
 
-export type RecipeDetail = RecipeSummary & {
+export type RecipeDetail = RecipeSummary & ({
   ingredients: RecipeIngredient[];
   instructions: string[];
-};
+  instructionsSimplified: boolean;
+  /** @nullable */
+  instructionsNote: string | null;
+});
 
 export interface ScrapCookSession {
   ingredients: string[];
@@ -98,8 +133,8 @@ export interface ScrapCookSession {
 
 export interface RecipeResults {
   /**
-     * @minItems 3
-     * @maxItems 3
+     * @minItems 0
+     * @maxItems 50
      */
   recipes: RecipeSummary[];
   demoMode: boolean;

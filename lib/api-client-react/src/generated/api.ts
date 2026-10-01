@@ -315,7 +315,7 @@ export const getGenerateScrapCookRecipesUrl = () => {
 }
 
 /**
- * @summary Generate three recipes using the current session
+ * @summary Find up to 50 recipes using ingredients and cooking preferences
  */
 export const generateScrapCookRecipes = async ( options?: Parameters<typeof customFetch>[1]): Promise<RecipeResults> => {
 
@@ -367,7 +367,7 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
 
     /**
- * @summary Generate three recipes using the current session
+ * @summary Find up to 50 recipes using ingredients and cooking preferences
  */
 export const useGenerateScrapCookRecipes = <TError = ErrorType<ApiError>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof generateScrapCookRecipes>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}

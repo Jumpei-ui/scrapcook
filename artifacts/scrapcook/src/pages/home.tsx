@@ -70,6 +70,27 @@ const timeChoices: { value: CookingPreferences["timeAvailable"]; title: string; 
   { value: "noLimit", title: "No limit", detail: "I'm not in a rush" },
 ];
 
+const maxReadyTimeChoices: { value: CookingPreferences["maxReadyTime"]; label: string }[] = [
+  { value: 0, label: "No maximum" },
+  { value: 15, label: "15 minutes" },
+  { value: 30, label: "30 minutes" },
+  { value: 45, label: "45 minutes" },
+  { value: 60, label: "1 hour" },
+  { value: 90, label: "1½ hours" },
+  { value: 120, label: "2 hours" },
+  { value: 180, label: "3 hours" },
+];
+
+const dietChoices: { value: CookingPreferences["diet"]; label: string }[] = [
+  { value: "none", label: "No preference" },
+  { value: "vegetarian", label: "Vegetarian" },
+  { value: "vegan", label: "Vegan" },
+  { value: "pescetarian", label: "Pescetarian" },
+  { value: "glutenFree", label: "Gluten-free" },
+  { value: "ketogenic", label: "Keto" },
+  { value: "paleo", label: "Paleo" },
+];
+
 const equipmentChoices: { value: EquipmentChoice; title: string; note: string }[] = [
   { value: "stove", title: "Stove", note: "Hob or hotplate" },
   { value: "oven", title: "Oven", note: "Bake or roast" },
@@ -82,6 +103,8 @@ const defaultPreferences: CookingPreferences = {
   experience: "beginner",
   timeAvailable: "15to30",
   equipment: ["stove"],
+  maxReadyTime: 0,
+  diet: "none",
 };
 
 const stepTitles: { value: FlowStep; title: string; number: string }[] = [
@@ -382,6 +405,44 @@ function PreferencesCard({
       />
       <section className="sc-pref-section">
         <div className="sc-pref-title-row">
+          <h3>Recipe filters</h3>
+          <span>Only show recipes that fit</span>
+        </div>
+        <div className="sc-filter-grid">
+          <label className="sc-filter-control">
+            <span>Maximum recipe time</span>
+            <select
+              value={preferences.maxReadyTime}
+              onChange={(event) => setPreferences({
+                ...preferences,
+                maxReadyTime: Number(event.target.value) as CookingPreferences["maxReadyTime"],
+              })}
+              data-testid="select-max-ready-time"
+            >
+              {maxReadyTimeChoices.map((choice) => (
+                <option key={choice.value} value={choice.value}>{choice.label}</option>
+              ))}
+            </select>
+          </label>
+          <label className="sc-filter-control">
+            <span>Diet</span>
+            <select
+              value={preferences.diet}
+              onChange={(event) => setPreferences({
+                ...preferences,
+                diet: event.target.value as CookingPreferences["diet"],
+              })}
+              data-testid="select-diet"
+            >
+              {dietChoices.map((choice) => (
+                <option key={choice.value} value={choice.value}>{choice.label}</option>
+              ))}
+            </select>
+          </label>
+        </div>
+      </section>
+      <section className="sc-pref-section">
+        <div className="sc-pref-title-row">
           <h3>Equipment available</h3>
           <span>Choose everything you can use</span>
         </div>
@@ -425,7 +486,7 @@ function RecipeCard({ recipe, index }: { recipe: RecipeSummary; index: number })
           onError={(event) => { event.currentTarget.style.visibility = "hidden"; }}
           data-testid={`img-recipe-${recipe.id}`}
         />
-        <span className="sc-recipe-index">0{index + 1}</span>
+      <span className="sc-recipe-index">{String(index + 1).padStart(2, "0")}</span>
         {recipe.made && <span className="sc-made-label"><Check size={12} /> Made</span>}
       </div>
       <div className="sc-recipe-content">
@@ -473,7 +534,14 @@ export default function HomePage() {
     const saved = sessionQuery.data;
     if (!saved || hydrated) return;
     setIngredients(saved.ingredients);
-    if (saved.preferences) setPreferences(saved.preferences);
+    if (saved.preferences) {
+      setPreferences({
+        ...defaultPreferences,
+        ...saved.preferences,
+        maxReadyTime: saved.preferences.maxReadyTime ?? defaultPreferences.maxReadyTime,
+        diet: saved.preferences.diet ?? defaultPreferences.diet,
+      });
+    }
     if (saved.recipes.length > 0) setStep("results");
     else if (saved.ingredients.length >= 3) setStep("preferences");
     setHydrated(true);
@@ -650,14 +718,14 @@ export default function HomePage() {
                 data-testid="button-generate-recipes"
               >
                 {loading ? <LoaderCircle className="sc-spin" size={17} /> : <Sparkles size={16} />}
-                Generate My 3 Recipes
+                Find Recipes
               </button>
             </div>
             {loading && (
               <div className="sc-checking" role="status" data-testid="status-checking-fridge">
                 <span className="sc-checking-spinner"><LoaderCircle className="sc-spin" size={18} /></span>
                 <span>Checking your fridge…</span>
-                <span className="sc-checking-sub">Finding a few good ideas from what you have.</span>
+                <span className="sc-checking-sub">Searching for up to 50 matches that fit your filters.</span>
               </div>
             )}
           </section>
@@ -668,17 +736,17 @@ export default function HomePage() {
             <div className="sc-stage-heading sc-results-heading">
               <div className="sc-eyebrow"><Sparkles size={14} /> MADE FOR YOUR KITCHEN</div>
               <h1 id="page-title-results">A little fridge <em>inspiration.</em></h1>
-              <p>Three ways to make the most of what you already have.</p>
+              <p>Recipe ideas matched to your ingredients and preferences.</p>
             </div>
             {sessionQuery.data?.demoMode && (
               <div className="sc-demo-note" data-testid="status-demo-mode">
                 <span><Sparkles size={15} /> Demo recipes</span>
-                <span>Add your Spoonacular key in Secrets to see live recipe matches.</span>
+                <span>Add a Spoonacular key in Replit Secrets to see live recipe matches.</span>
               </div>
             )}
             {error && <p className="sc-alert" role="alert" data-testid="status-error">{error}</p>}
             <div className="sc-results-topline">
-              <div><span className="sc-results-count" data-testid="text-recipe-result-count">0{recipes.length}</span><span>recipes, picked for you</span></div>
+              <div><span className="sc-results-count" data-testid="text-recipe-result-count">{recipes.length}</span><span>recipes, picked for you</span></div>
               <button type="button" className="sc-text-button" onClick={regenerate} disabled={loading} data-testid="button-refresh-recipes">
                 <Sparkles size={14} /> Find another set
               </button>
@@ -687,7 +755,7 @@ export default function HomePage() {
               <div className="sc-results-loading" role="status" data-testid="status-checking-fridge">
                 <span className="sc-checking-spinner"><LoaderCircle className="sc-spin" size={19} /></span>
                 <strong>Checking your fridge…</strong>
-                <span>Finding a few good ideas from what you have.</span>
+                <span>Searching for recipes that fit your filters.</span>
               </div>
             ) : recipes.length > 0 ? (
               <div className="sc-recipe-grid">
@@ -696,8 +764,8 @@ export default function HomePage() {
             ) : (
               <div className="sc-empty-results">
                 <span className="sc-empty-icon"><CookingPot size={21} /></span>
-                <strong>No recipes yet</strong>
-                <span>Choose your preferences and we’ll find three ideas.</span>
+                <strong>No recipes matched</strong>
+                <span>Try a longer time limit, another diet, or a few more ingredients.</span>
               </div>
             )}
             <div className="sc-results-bottom">

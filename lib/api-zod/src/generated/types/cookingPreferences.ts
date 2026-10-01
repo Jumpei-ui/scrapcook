@@ -7,11 +7,15 @@
  */
 import type { CookingExperience } from './cookingExperience';
 import type { CookingTime } from './cookingTime';
+import type { DietPreference } from './dietPreference';
 import type { Equipment } from './equipment';
+import type { MaxReadyTime } from './maxReadyTime';
 
 export interface CookingPreferences {
   experience: CookingExperience;
   timeAvailable: CookingTime;
   /** @minItems 1 */
   equipment: Equipment[];
+  maxReadyTime: MaxReadyTime;
+  diet: DietPreference;
 }

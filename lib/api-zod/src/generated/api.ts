@@ -28,7 +28,9 @@ export const GetScrapCookSessionResponse = zod.object({
   "preferences": zod.union([zod.object({
   "experience": zod.enum(['beginner', 'intermediate', 'pro']),
   "timeAvailable": zod.enum(['under15', '15to30', '30to60', 'noLimit']),
-  "equipment": zod.array(zod.enum(['stove', 'oven', 'microwave', 'airFryer', 'coldMeals'])).min(1)
+  "equipment": zod.array(zod.enum(['stove', 'oven', 'microwave', 'airFryer', 'coldMeals'])).min(1),
+  "maxReadyTime": zod.union([zod.literal(0),zod.literal(15),zod.literal(30),zod.literal(45),zod.literal(60),zod.literal(90),zod.literal(120),zod.literal(180)]).describe('Maximum recipe time in minutes; zero means no limit'),
+  "diet": zod.enum(['none', 'vegetarian', 'vegan', 'pescetarian', 'glutenFree', 'ketogenic', 'paleo'])
 }),zod.null()]),
   "recipes": zod.array(zod.object({
   "id": zod.string(),
@@ -59,7 +61,9 @@ export const UpdateScrapCookSessionBody = zod.object({
   "preferences": zod.union([zod.object({
   "experience": zod.enum(['beginner', 'intermediate', 'pro']),
   "timeAvailable": zod.enum(['under15', '15to30', '30to60', 'noLimit']),
-  "equipment": zod.array(zod.enum(['stove', 'oven', 'microwave', 'airFryer', 'coldMeals'])).min(1)
+  "equipment": zod.array(zod.enum(['stove', 'oven', 'microwave', 'airFryer', 'coldMeals'])).min(1),
+  "maxReadyTime": zod.union([zod.literal(0),zod.literal(15),zod.literal(30),zod.literal(45),zod.literal(60),zod.literal(90),zod.literal(120),zod.literal(180)]).describe('Maximum recipe time in minutes; zero means no limit'),
+  "diet": zod.enum(['none', 'vegetarian', 'vegan', 'pescetarian', 'glutenFree', 'ketogenic', 'paleo'])
 }),zod.null()])
 })
 
@@ -71,7 +75,9 @@ export const UpdateScrapCookSessionResponse = zod.object({
   "preferences": zod.union([zod.object({
   "experience": zod.enum(['beginner', 'intermediate', 'pro']),
   "timeAvailable": zod.enum(['under15', '15to30', '30to60', 'noLimit']),
-  "equipment": zod.array(zod.enum(['stove', 'oven', 'microwave', 'airFryer', 'coldMeals'])).min(1)
+  "equipment": zod.array(zod.enum(['stove', 'oven', 'microwave', 'airFryer', 'coldMeals'])).min(1),
+  "maxReadyTime": zod.union([zod.literal(0),zod.literal(15),zod.literal(30),zod.literal(45),zod.literal(60),zod.literal(90),zod.literal(120),zod.literal(180)]).describe('Maximum recipe time in minutes; zero means no limit'),
+  "diet": zod.enum(['none', 'vegetarian', 'vegan', 'pescetarian', 'glutenFree', 'ketogenic', 'paleo'])
 }),zod.null()]),
   "recipes": zod.array(zod.object({
   "id": zod.string(),
@@ -88,10 +94,10 @@ export const UpdateScrapCookSessionResponse = zod.object({
 
 
 /**
- * @summary Generate three recipes using the current session
+ * @summary Find up to 50 recipes using ingredients and cooking preferences
  */
-export const generateScrapCookRecipesResponseRecipesMin = 3;
-export const generateScrapCookRecipesResponseRecipesMax = 3;
+export const generateScrapCookRecipesResponseRecipesMin = 0;
+export const generateScrapCookRecipesResponseRecipesMax = 50;
 
 
 
@@ -134,7 +140,9 @@ export const GetScrapCookRecipeResponse = zod.object({
   "unit": zod.string(),
   "inFridge": zod.boolean()
 })),
-  "instructions": zod.array(zod.string())
+  "instructions": zod.array(zod.string()),
+  "instructionsSimplified": zod.boolean(),
+  "instructionsNote": zod.string().nullable()
 }))
 
 

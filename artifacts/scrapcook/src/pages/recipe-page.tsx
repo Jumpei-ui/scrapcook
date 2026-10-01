@@ -198,9 +198,19 @@ function RecipeContent({
                   <span className="sc-section-number sc-section-orange">02</span>
                   <div>
                     <h2 id="instructions-heading">Let’s make it</h2>
-                    <p>One simple step at a time</p>
+                    <p>{recipe.instructionsSimplified ? "Student-friendly steps" : "Recipe instructions"}</p>
                   </div>
                 </div>
+                {(recipe.instructionsSimplified || recipe.instructionsNote) && (
+                  <p
+                    className={`sc-instruction-note ${recipe.instructionsSimplified ? "is-simplified" : ""}`}
+                    role="status"
+                    data-testid="status-instruction-simplification"
+                  >
+                    {recipe.instructionsNote
+                      ?? "Simplified for students. Original timings and quantities are preserved."}
+                  </p>
+                )}
                 <ol className="sc-instructions-list">
                   {recipe.instructions.map((instruction, index) => (
                     <li key={`${index}-${instruction.slice(0, 18)}`} data-testid={`text-instruction-step-${index + 1}`}>

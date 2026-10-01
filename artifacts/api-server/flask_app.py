@@ -1,8 +1,10 @@
 import html
+import hashlib
 import json
 import os
 import re
-from concurrent.futures import ThreadPoolExecutor
+import threading
+import time
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
@@ -25,7 +27,20 @@ app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
 EXPERIENCES = {"beginner", "intermediate", "pro"}
 TIME_OPTIONS = {"under15", "15to30", "30to60", "noLimit"}
 EQUIPMENT = {"stove", "oven", "microwave", "airFryer", "coldMeals"}
+MAX_READY_TIMES = {0, 15, 30, 45, 60, 90, 120, 180}
+DIETS = {"none", "vegetarian", "vegan", "pescetarian", "glutenFree", "ketogenic", "paleo"}
+SPOONACULAR_DIETS = {
+    "vegetarian": "vegetarian",
+    "vegan": "vegan",
+    "pescetarian": "pescetarian",
+    "glutenFree": "gluten free",
+    "ketogenic": "ketogenic",
+    "paleo": "paleo",
+}
 SPOONACULAR_API_KEY = os.environ.get("SPOONACULAR_API_KEY", "").strip()
+RECIPE_CACHE_TTL_SECONDS = 24 * 60 * 60
+_RECIPE_SEARCH_CACHE = {}
+_RECIPE_SEARCH_CACHE_LOCK = threading.RLock()
 
 DEMO_RECIPES = {
     "demo-tomato-pasta": {
@@ -200,11 +215,56 @@ def recipe_summary(recipe):
 
 
 def session_payload():
+    preferences = normalized_preferences(session.get("preferences"))
+    if preferences and preferences != session.get("preferences"):
+        session["preferences"] = preferences
+    demo_mode = bool(session.get("demoMode", not SPOONACULAR_API_KEY))
+    recipes = session.get("recipes", []) if demo_mode else session_real_recipe_details()
     return {
         "ingredients": session.get("ingredients", []),
-        "preferences": session.get("preferences"),
-        "recipes": [recipe_summary(recipe) for recipe in session.get("recipes", [])],
-        "demoMode": bool(session.get("demoMode", not SPOONACULAR_API_KEY)),
+        "preferences": preferences,
+        "recipes": [recipe_summary(recipe) for recipe in recipes],
+        "demoMode": demo_mode,
+    }
+
+
+def normalized_preferences(preferences):
+    if not isinstance(preferences, dict):
+        return None
+    experience = preferences.get("experience", "beginner")
+    time_available = preferences.get("timeAvailable", "15to30")
+    equipment = preferences.get("equipment", ["stove"])
+    max_ready_time = preferences.get("maxReadyTime", 0)
+    diet = preferences.get("diet", "none")
+    clean_equipment = [
+        item for item in equipment
+        if isinstance(item, str) and item in EQUIPMENT
+    ] if isinstance(equipment, list) else []
+    if not clean_equipment:
+        clean_equipment = ["stove"]
+    if (
+        isinstance(max_ready_time, bool)
+        or not isinstance(max_ready_time, int)
+        or max_ready_time not in MAX_READY_TIMES
+    ):
+        max_ready_time = 0
+    return {
+        "experience": experience if isinstance(experience, str) and experience in EXPERIENCES else "beginner",
+        "timeAvailable": time_available if isinstance(time_available, str) and time_available in TIME_OPTIONS else "15to30",
+        "equipment": clean_equipment,
+        "maxReadyTime": max_ready_time,
+        "diet": diet if isinstance(diet, str) and diet in DIETS else "none",
+    }
+
+
+def session_recipe_ids():
+    stored_ids = session.get("recipeIds")
+    if isinstance(stored_ids, list):
+        return {str(recipe_id) for recipe_id in stored_ids}
+    return {
+        str(recipe.get("id"))
+        for recipe in session.get("recipes", [])
+        if isinstance(recipe, dict) and recipe.get("id") is not None
     }
 
 
@@ -259,18 +319,151 @@ def spoonacular_recipe_details(search_result, information=None):
                 "inFridge": has_ingredient(name, fridge_ingredients),
             }
         )
+    missing_ingredients = search_result.get("missedIngredientCount")
+    if missing_ingredients is None:
+        missing_ingredients = sum(not ingredient["inFridge"] for ingredient in ingredients)
     recipe = {
         "id": str(info.get("id", search_result["id"])),
         "title": info.get("title") or search_result.get("title", "Untitled recipe"),
         "image": info.get("image") or search_result.get("image", ""),
         "readyInMinutes": int(info.get("readyInMinutes") or 30),
         "difficulty": difficulty_for(info),
-        "missingIngredients": int(search_result.get("missedIngredientCount") or 0),
+        "missingIngredients": int(missing_ingredients or 0),
         "servings": int(info.get("servings") or 2),
         "ingredients": ingredients,
         "instructions": scrape_steps(info),
+        "instructionsSimplified": False,
+        "instructionsNote": None,
     }
     return recipe
+
+
+def recipe_search_cache_key(ingredients, preferences):
+    cache_input = {
+        "ingredients": sorted({normalise(item) for item in ingredients if normalise(item)}),
+        "maxReadyTime": int(preferences.get("maxReadyTime") or 0),
+        "diet": preferences.get("diet", "none"),
+    }
+    encoded = json.dumps(cache_input, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    return "spoonacular-search:" + hashlib.sha256(encoded).hexdigest()
+
+
+def recipe_search_cache_get(cache_key):
+    now = time.time()
+    with _RECIPE_SEARCH_CACHE_LOCK:
+        cached = _RECIPE_SEARCH_CACHE.get(cache_key)
+        if not cached:
+            return None
+        expires_at, value = cached
+        if expires_at <= now:
+            _RECIPE_SEARCH_CACHE.pop(cache_key, None)
+            return None
+        return value
+
+
+def recipe_search_cache_set(cache_key, value):
+    now = time.time()
+    with _RECIPE_SEARCH_CACHE_LOCK:
+        expired_keys = [
+            key for key, (expires_at, _value) in _RECIPE_SEARCH_CACHE.items()
+            if expires_at <= now
+        ]
+        for key in expired_keys:
+            _RECIPE_SEARCH_CACHE.pop(key, None)
+        _RECIPE_SEARCH_CACHE[cache_key] = (now + RECIPE_CACHE_TTL_SECONDS, value)
+
+
+def spoonacular_search_data(ingredients, preferences):
+    cache_key = recipe_search_cache_key(ingredients, preferences)
+    cached = recipe_search_cache_get(cache_key)
+    if cached is not None:
+        return cache_key, cached
+
+    found = spoonacular_get(
+        "/recipes/findByIngredients",
+        {
+            "ingredients": ",".join(ingredients),
+            "number": 50,
+            "ranking": 2,
+            "ignorePantry": "true",
+        },
+    )
+    if not isinstance(found, list):
+        raise ValueError("Spoonacular returned an invalid recipe list.")
+
+    recipe_ids = [str(recipe["id"]) for recipe in found if recipe.get("id") is not None]
+    if recipe_ids:
+        information = spoonacular_get(
+            "/recipes/informationBulk",
+            {"ids": ",".join(recipe_ids), "includeNutrition": "false"},
+        )
+        if not isinstance(information, list):
+            raise ValueError("Spoonacular returned invalid recipe details.")
+    else:
+        information = []
+
+    data = {
+        "found": found,
+        "information": {
+            str(recipe["id"]): recipe
+            for recipe in information
+            if recipe.get("id") is not None
+        },
+    }
+    recipe_search_cache_set(cache_key, data)
+    return cache_key, data
+
+
+def filtered_recipe_details(search_data, preferences):
+    max_ready_time = int(preferences.get("maxReadyTime") or 0)
+    diet = preferences.get("diet", "none")
+    expected_diet = normalise(SPOONACULAR_DIETS.get(diet, ""))
+    recipes = []
+
+    for result in search_data.get("found", []):
+        recipe_id = str(result.get("id", ""))
+        information = search_data.get("information", {}).get(recipe_id)
+        if not information:
+            continue
+
+        try:
+            ready_in_minutes = int(information.get("readyInMinutes") or 0)
+        except (TypeError, ValueError):
+            ready_in_minutes = 0
+        if max_ready_time and (ready_in_minutes <= 0 or ready_in_minutes > max_ready_time):
+            continue
+
+        if expected_diet:
+            diet_values = information.get("diets") or []
+            actual_diets = {
+                normalise(value) for value in diet_values if isinstance(value, str)
+            } if isinstance(diet_values, list) else set()
+            if expected_diet not in actual_diets:
+                continue
+
+        recipe = spoonacular_recipe_details(result, information=information)
+        if not recipe["title"].strip() or not recipe["image"].strip():
+            continue
+        recipes.append(recipe)
+
+    time_available = preferences.get("timeAvailable", "noLimit")
+    recipes.sort(
+        key=lambda recipe: (
+            time_score(recipe["readyInMinutes"], time_available),
+            -recipe["missingIngredients"],
+        ),
+        reverse=True,
+    )
+    return recipes
+
+
+def session_real_recipe_details():
+    ingredients = session.get("ingredients", [])
+    preferences = normalized_preferences(session.get("preferences"))
+    if not SPOONACULAR_API_KEY or not ingredients or not preferences:
+        return []
+    _cache_key, search_data = spoonacular_search_data(ingredients, preferences)
+    return filtered_recipe_details(search_data, preferences)
 
 
 def demo_recipe_detail(recipe_id):
@@ -308,14 +501,21 @@ def time_score(minutes, time_available):
 def ranked_demo_recipes(preferences):
     selected_equipment = set(preferences.get("equipment") or [])
     time_available = preferences.get("timeAvailable", "noLimit")
+    max_ready_time = int(preferences.get("maxReadyTime") or 0)
+    diet = preferences.get("diet", "none")
     fridge_ingredients = session.get("ingredients", [])
     recipes = []
     for original in DEMO_RECIPES.values():
         recipe = dict(original)
+        recipe["diets"] = ["vegetarian", "pescetarian"]
         recipe["missingIngredients"] = sum(
             not has_ingredient(name, fridge_ingredients)
             for name, _original, _amount, _unit in original["ingredients"]
         )
+        if max_ready_time and recipe["readyInMinutes"] > max_ready_time:
+            continue
+        if diet != "none" and diet not in recipe["diets"]:
+            continue
         recipes.append(recipe)
     recipes.sort(
         key=lambda recipe: (
@@ -364,17 +564,27 @@ def update_session():
     if preferences is not None:
         if not isinstance(preferences, dict):
             return error_response("Choose your cooking preferences before generating recipes.", 400)
-        if preferences.get("experience") not in EXPERIENCES:
+        if not isinstance(preferences.get("experience"), str) or preferences.get("experience") not in EXPERIENCES:
             return error_response("Choose a cooking experience level.", 400)
-        if preferences.get("timeAvailable") not in TIME_OPTIONS:
+        if not isinstance(preferences.get("timeAvailable"), str) or preferences.get("timeAvailable") not in TIME_OPTIONS:
             return error_response("Choose how much time you have.", 400)
         equipment = preferences.get("equipment")
         if (
             not isinstance(equipment, list)
             or not equipment
-            or any(item not in EQUIPMENT for item in equipment)
+            or any(not isinstance(item, str) or item not in EQUIPMENT for item in equipment)
         ):
             return error_response("Choose at least one available cooking option.", 400)
+        max_ready_time = preferences.get("maxReadyTime", 0)
+        if (
+            isinstance(max_ready_time, bool)
+            or not isinstance(max_ready_time, int)
+            or max_ready_time not in MAX_READY_TIMES
+        ):
+            return error_response("Choose a valid maximum recipe time.", 400)
+        diet = preferences.get("diet", "none")
+        if not isinstance(diet, str) or diet not in DIETS:
+            return error_response("Choose a valid diet preference.", 400)
 
     session["ingredients"] = cleaned
     session["preferences"] = (
@@ -382,11 +592,15 @@ def update_session():
             "experience": preferences["experience"],
             "timeAvailable": preferences["timeAvailable"],
             "equipment": list(dict.fromkeys(equipment)),
+            "maxReadyTime": preferences.get("maxReadyTime", 0),
+            "diet": preferences.get("diet", "none"),
         }
         if preferences is not None
         else None
     )
     session["recipes"] = []
+    session["recipeIds"] = []
+    session["recipeSearchKey"] = None
     session["madeRecipeIds"] = []
     session["demoMode"] = not SPOONACULAR_API_KEY
     session.permanent = True
@@ -417,6 +631,8 @@ def generate_recipes():
             }
             for recipe in recipes
         ]
+        session["recipeIds"] = [str(recipe["id"]) for recipe in recipes]
+        session["recipeSearchKey"] = None
         session["demoMode"] = True
         session["madeRecipeIds"] = []
         session.permanent = True
@@ -428,39 +644,11 @@ def generate_recipes():
         )
 
     try:
-        found = spoonacular_get(
-            "/recipes/findByIngredients",
-            {
-                "ingredients": ",".join(ingredients),
-                "number": 3,
-                "ranking": 2,
-                "ignorePantry": "true",
-            },
-        )
-        if not isinstance(found, list) or len(found) < 3:
-            return error_response(
-                "Spoonacular returned fewer than three matching recipes. Try adding more ingredients.",
-                502,
-            )
-        with ThreadPoolExecutor(max_workers=3) as pool:
-            details = list(pool.map(spoonacular_recipe_details, found[:3]))
-        if len(details) != 3:
-            return error_response("Spoonacular could not load three complete recipes. Please try again.", 502)
-        session["recipes"] = [
-            {
-                key: recipe[key]
-                for key in (
-                    "id",
-                    "title",
-                    "image",
-                    "readyInMinutes",
-                    "difficulty",
-                    "missingIngredients",
-                    "servings",
-                )
-            }
-            for recipe in details
-        ]
+        search_key, search_data = spoonacular_search_data(ingredients, preferences)
+        details = filtered_recipe_details(search_data, preferences)
+        session["recipes"] = []
+        session["recipeIds"] = [str(recipe["id"]) for recipe in details]
+        session["recipeSearchKey"] = search_key
         session["demoMode"] = False
         session["madeRecipeIds"] = []
         session.permanent = True
@@ -480,30 +668,45 @@ def generate_recipes():
 
 @app.get("/api/scrapcook/recipes/<recipe_id>")
 def get_recipe(recipe_id):
-    recipe_ids = {str(recipe["id"]) for recipe in session.get("recipes", [])}
-    if recipe_id not in recipe_ids:
+    if recipe_id not in session_recipe_ids():
         return error_response("This recipe is no longer in your cooking session. Generate recipes again.", 404)
     if session.get("demoMode"):
         detail = demo_recipe_detail(recipe_id)
         if detail is None:
             return error_response("Recipe details could not be found.", 404)
-        return jsonify(detail)
+        return jsonify(
+            {
+                **detail,
+                "instructionsSimplified": False,
+                "instructionsNote": None,
+            }
+        )
 
     try:
-        found = spoonacular_get(f"/recipes/{recipe_id}/information")
+        preferences = normalized_preferences(session.get("preferences"))
+        if not preferences:
+            return error_response("Choose your preferences and generate recipes again.", 400)
+        _cache_key, search_data = spoonacular_search_data(
+            session.get("ingredients", []),
+            preferences,
+        )
+        search_result = next(
+            (
+                recipe for recipe in search_data.get("found", [])
+                if str(recipe.get("id")) == recipe_id
+            ),
+            {"id": recipe_id},
+        )
+        found = search_data.get("information", {}).get(recipe_id)
+        if not found:
+            found = spoonacular_get(
+                f"/recipes/{recipe_id}/information",
+                {"includeNutrition": "false"},
+            )
         detail = spoonacular_recipe_details(
             {
+                **search_result,
                 "id": found.get("id", recipe_id),
-                "title": found.get("title", ""),
-                "image": found.get("image", ""),
-                "missedIngredientCount": next(
-                    (
-                        recipe.get("missingIngredients", 0)
-                        for recipe in session.get("recipes", [])
-                        if str(recipe.get("id")) == recipe_id
-                    ),
-                    0,
-                ),
             },
             information=found,
         )
@@ -515,8 +718,7 @@ def get_recipe(recipe_id):
 
 @app.post("/api/scrapcook/recipes/<recipe_id>/made")
 def mark_recipe_made(recipe_id):
-    recipe_ids = {str(recipe["id"]) for recipe in session.get("recipes", [])}
-    if recipe_id not in recipe_ids:
+    if recipe_id not in session_recipe_ids():
         return error_response("This recipe is no longer in your cooking session.", 404)
     made_ids = set(session.get("madeRecipeIds", []))
     made_ids.add(recipe_id)

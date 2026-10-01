@@ -61,10 +61,10 @@ paths:
     post:
       operationId: generateScrapCookRecipes
       tags: [scrapcook]
-      summary: Generate three recipes using the current session
+      summary: Find up to 50 recipes using ingredients and cooking preferences
       responses:
         "200":
-          description: Three matching recipes
+          description: Matching Spoonacular recipes
           content:
             application/json:
               schema:
@@ -261,6 +261,13 @@ components:
     Equipment:
       type: string
       enum: [stove, oven, microwave, airFryer, coldMeals]
+    MaxReadyTime:
+      type: integer
+      enum: [0, 15, 30, 45, 60, 90, 120, 180]
+      description: Maximum recipe time in minutes; zero means no limit
+    DietPreference:
+      type: string
+      enum: [none, vegetarian, vegan, pescetarian, glutenFree, ketogenic, paleo]
     CookingPreferences:
       type: object
       properties:
@@ -273,7 +280,11 @@ components:
           items:
             $ref: "#/components/schemas/Equipment"
           minItems: 1
-      required: [experience, timeAvailable, equipment]
+        maxReadyTime:
+          $ref: "#/components/schemas/MaxReadyTime"
+        diet:
+          $ref: "#/components/schemas/DietPreference"
+      required: [experience, timeAvailable, equipment, maxReadyTime, diet]
     ScrapCookSessionInput:
       type: object
       properties:
@@ -338,7 +349,11 @@ components:
               type: array
               items:
                 type: string
-          required: [ingredients, instructions]
+            instructionsSimplified:
+              type: boolean
+            instructionsNote:
+              type: ["string", "null"]
+          required: [ingredients, instructions, instructionsSimplified, instructionsNote]
     ScrapCookSession:
       type: object
       properties:
@@ -364,8 +379,8 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/RecipeSummary"
-          minItems: 3
-          maxItems: 3
+          minItems: 0
+          maxItems: 50
         demoMode:
           type: boolean
       required: [recipes, demoMode]

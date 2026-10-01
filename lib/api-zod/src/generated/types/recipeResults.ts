@@ -9,8 +9,8 @@ import type { RecipeSummary } from './recipeSummary';
 
 export interface RecipeResults {
   /**
-     * @minItems 3
-     * @maxItems 3
+     * @minItems 0
+     * @maxItems 50
      */
   recipes: RecipeSummary[];
   demoMode: boolean;

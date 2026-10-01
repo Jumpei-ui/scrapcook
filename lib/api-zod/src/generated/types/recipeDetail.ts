@@ -8,7 +8,10 @@
 import type { RecipeIngredient } from './recipeIngredient';
 import type { RecipeSummary } from './recipeSummary';
 
-export type RecipeDetail = RecipeSummary & {
+export type RecipeDetail = RecipeSummary & ({
   ingredients: RecipeIngredient[];
   instructions: string[];
-};
+  instructionsSimplified: boolean;
+  /** @nullable */
+  instructionsNote: string | null;
+});
