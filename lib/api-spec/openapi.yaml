@@ -10,6 +10,8 @@ servers:
 tags:
   - name: health
     description: Health operations
+  - name: scrapcook
+    description: ScrapCook cooking session and recipe operations
 paths:
   /healthz:
     get:
@@ -24,6 +26,107 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+  /scrapcook/session:
+    get:
+      operationId: getScrapCookSession
+      tags: [scrapcook]
+      summary: Get the current cooking session
+      responses:
+        "200":
+          description: Current session state
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ScrapCookSession"
+    put:
+      operationId: updateScrapCookSession
+      tags: [scrapcook]
+      summary: Save fridge ingredients and cooking preferences
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ScrapCookSessionInput"
+      responses:
+        "200":
+          description: Updated cooking session
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ScrapCookSession"
+  /scrapcook/recipes:
+    post:
+      operationId: generateScrapCookRecipes
+      tags: [scrapcook]
+      summary: Generate three recipes using the current session
+      responses:
+        "200":
+          description: Three matching recipes
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RecipeResults"
+        "400":
+          description: Session needs ingredients and preferences
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "502":
+          description: Recipe provider request failed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+  /scrapcook/recipes/{recipeId}:
+    get:
+      operationId: getScrapCookRecipe
+      tags: [scrapcook]
+      summary: Get ingredients and instructions for a recipe
+      parameters:
+        - name: recipeId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Full recipe details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RecipeDetail"
+        "404":
+          description: Recipe is not in this session
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+  /scrapcook/recipes/{recipeId}/made:
+    post:
+      operationId: markScrapCookRecipeMade
+      tags: [scrapcook]
+      summary: Mark a recipe as made in the current session
+      parameters:
+        - name: recipeId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Recipe marked as made
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MadeRecipe"
+        "404":
+          description: Recipe is not in this session
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
 components:
   schemas:
     HealthStatus:
@@ -33,4 +136,135 @@ components:
           type: string
       required:
         - status
+    CookingExperience:
+      type: string
+      enum: [beginner, intermediate, pro]
+    CookingTime:
+      type: string
+      enum: [under15, 15to30, 30to60, noLimit]
+    Equipment:
+      type: string
+      enum: [stove, oven, microwave, airFryer, coldMeals]
+    CookingPreferences:
+      type: object
+      properties:
+        experience:
+          $ref: "#/components/schemas/CookingExperience"
+        timeAvailable:
+          $ref: "#/components/schemas/CookingTime"
+        equipment:
+          type: array
+          items:
+            $ref: "#/components/schemas/Equipment"
+          minItems: 1
+      required: [experience, timeAvailable, equipment]
+    ScrapCookSessionInput:
+      type: object
+      properties:
+        ingredients:
+          type: array
+          items:
+            type: string
+            minLength: 1
+          minItems: 3
+          maxItems: 40
+        preferences:
+          oneOf:
+            - $ref: "#/components/schemas/CookingPreferences"
+            - type: "null"
+      required: [ingredients, preferences]
+    RecipeSummary:
+      type: object
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+        image:
+          type: string
+          format: uri
+        readyInMinutes:
+          type: integer
+        difficulty:
+          type: string
+          enum: [Beginner, Intermediate, Pro]
+        missingIngredients:
+          type: integer
+        servings:
+          type: integer
+        made:
+          type: boolean
+      required: [id, title, image, readyInMinutes, difficulty, missingIngredients, servings, made]
+    RecipeIngredient:
+      type: object
+      properties:
+        name:
+          type: string
+        original:
+          type: string
+        amount:
+          type: number
+        unit:
+          type: string
+        inFridge:
+          type: boolean
+      required: [name, original, amount, unit, inFridge]
+    RecipeDetail:
+      allOf:
+        - $ref: "#/components/schemas/RecipeSummary"
+        - type: object
+          properties:
+            ingredients:
+              type: array
+              items:
+                $ref: "#/components/schemas/RecipeIngredient"
+            instructions:
+              type: array
+              items:
+                type: string
+          required: [ingredients, instructions]
+    ScrapCookSession:
+      type: object
+      properties:
+        ingredients:
+          type: array
+          items:
+            type: string
+        preferences:
+          oneOf:
+            - $ref: "#/components/schemas/CookingPreferences"
+            - type: "null"
+        recipes:
+          type: array
+          items:
+            $ref: "#/components/schemas/RecipeSummary"
+        demoMode:
+          type: boolean
+      required: [ingredients, preferences, recipes, demoMode]
+    RecipeResults:
+      type: object
+      properties:
+        recipes:
+          type: array
+          items:
+            $ref: "#/components/schemas/RecipeSummary"
+          minItems: 3
+          maxItems: 3
+        demoMode:
+          type: boolean
+      required: [recipes, demoMode]
+    MadeRecipe:
+      type: object
+      properties:
+        recipeId:
+          type: string
+        made:
+          type: boolean
+      required: [recipeId, made]
+    ApiError:
+      type: object
+      properties:
+        error:
+          type: string
+      required: [error]
 

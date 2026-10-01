@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/"
+title = "ScrapCook"
+description = "A mobile-first recipe finder that turns the ingredients you already have into three practical recipes, with real photos, cooking instructions, and smart use of pantry items."
+version = "1.0.0"
+id = "artifacts/scrapcook"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 24459
+
+[services.development]
+run = "pnpm --filter @workspace/scrapcook run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/scrapcook", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/scrapcook/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "24459"
+BASE_PATH = "/"
