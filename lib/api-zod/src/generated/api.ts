@@ -151,3 +151,111 @@ export const MarkScrapCookRecipeMadeResponse = zod.object({
 })
 
 
+/**
+ * @summary Get the current user's savings dashboard
+ */
+export const getScrapCookSavingsDashboardResponseDailySavingsMin = 7;
+export const getScrapCookSavingsDashboardResponseDailySavingsMax = 7;
+
+export const getScrapCookSavingsDashboardResponseDefaultComparisonCostMin = 0;
+
+
+
+export const GetScrapCookSavingsDashboardResponse = zod.object({
+  "todaySavings": zod.number(),
+  "weekSavings": zod.number(),
+  "monthSavings": zod.number(),
+  "yearSavings": zod.number(),
+  "dailySavings": zod.array(zod.object({
+  "date": zod.coerce.date(),
+  "amountSaved": zod.number()
+})).min(getScrapCookSavingsDashboardResponseDailySavingsMin).max(getScrapCookSavingsDashboardResponseDailySavingsMax),
+  "recentMeals": zod.array(zod.object({
+  "id": zod.number().int(),
+  "createdAt": zod.coerce.date(),
+  "recipeName": zod.string(),
+  "actualCost": zod.number(),
+  "comparedToLabel": zod.string(),
+  "comparedToCost": zod.number(),
+  "amountSaved": zod.number()
+})),
+  "defaultComparison": zod.object({
+  "label": zod.enum(['Takeaway', 'Uber Eats', 'HelloFresh', 'Woolies new shop']),
+  "cost": zod.number().min(getScrapCookSavingsDashboardResponseDefaultComparisonCostMin)
+})
+})
+
+
+/**
+ * @summary Estimate the ingredient cost per serving for a recipe
+ */
+export const estimateScrapCookRecipeCostBodyRecipeIdMax = 100;
+
+
+
+export const EstimateScrapCookRecipeCostBody = zod.object({
+  "recipeId": zod.string().min(1).max(estimateScrapCookRecipeCostBodyRecipeIdMax)
+})
+
+export const estimateScrapCookRecipeCostResponseEstimatedCostPerServeMin = 0;
+
+
+
+export const EstimateScrapCookRecipeCostResponse = zod.object({
+  "estimatedCostPerServe": zod.number().min(estimateScrapCookRecipeCostResponseEstimatedCostPerServeMin),
+  "estimateType": zod.enum(['reference']),
+  "note": zod.string()
+})
+
+
+/**
+ * @summary Save a cooked meal and its calculated savings
+ */
+export const createScrapCookMealBodyRecipeNameMax = 200;
+
+export const createScrapCookMealBodyActualCostMin = 0;
+
+export const createScrapCookMealBodyComparedToCostMin = 0;
+
+
+
+export const CreateScrapCookMealBody = zod.object({
+  "recipeName": zod.string().min(1).max(createScrapCookMealBodyRecipeNameMax),
+  "actualCost": zod.number().min(createScrapCookMealBodyActualCostMin),
+  "comparedToLabel": zod.enum(['Takeaway', 'Uber Eats', 'HelloFresh', 'Woolies new shop']),
+  "comparedToCost": zod.number().min(createScrapCookMealBodyComparedToCostMin)
+})
+
+export const CreateScrapCookMealResponse = zod.object({
+  "id": zod.number().int(),
+  "createdAt": zod.coerce.date(),
+  "recipeName": zod.string(),
+  "actualCost": zod.number(),
+  "comparedToLabel": zod.string(),
+  "comparedToCost": zod.number(),
+  "amountSaved": zod.number()
+})
+
+
+/**
+ * @summary Save the default meal comparison
+ */
+export const updateScrapCookSavingsSettingsBodyCostMin = 0;
+
+
+
+export const UpdateScrapCookSavingsSettingsBody = zod.object({
+  "label": zod.enum(['Takeaway', 'Uber Eats', 'HelloFresh', 'Woolies new shop']),
+  "cost": zod.number().min(updateScrapCookSavingsSettingsBodyCostMin)
+})
+
+export const updateScrapCookSavingsSettingsResponseCostMin = 0;
+
+
+
+export const UpdateScrapCookSavingsSettingsResponse = zod.object({
+  "label": zod.enum(['Takeaway', 'Uber Eats', 'HelloFresh', 'Woolies new shop']),
+  "cost": zod.number().min(updateScrapCookSavingsSettingsResponseCostMin)
+})
+
+

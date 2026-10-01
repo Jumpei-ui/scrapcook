@@ -73,5 +73,9 @@
     "vite": "catalog:",
     "wouter": "^3.3.5",
     "zod": "catalog:"
+  },
+  "dependencies": {
+    "@types/react-csv": "^1.1.10",
+    "react-csv": "^2.2.2"
   }
 }

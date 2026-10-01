@@ -8,6 +8,7 @@ import {
   ExternalLink,
   LoaderCircle,
   Share2,
+  TrendingUp,
   Users,
 } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -19,6 +20,7 @@ import {
 } from "@workspace/api-client-react";
 import { Link, useLocation, useRoute } from "wouter";
 import type { RecipeDetail } from "@workspace/api-client-react";
+import CookedMealDialog from "@/components/cooked-meal-dialog";
 
 function errorMessage(error: unknown, fallback: string) {
   if (error instanceof Error && error.message) return error.message;
@@ -39,6 +41,10 @@ function Header() {
       <div className="sc-header-note">
         <span>Good food. Less waste.</span>
       </div>
+      <nav className="sc-header-links" aria-label="Your ScrapCook">
+        <Link href="/savings" className="sc-nav-link"><TrendingUp size={15} /> Savings</Link>
+        <Link href="/settings" className="sc-nav-link">Settings</Link>
+      </nav>
     </header>
   );
 }
@@ -207,6 +213,12 @@ function RecipeContent({
             </div>
 
             <div className="sc-detail-actions">
+              <CookedMealDialog
+                recipeId={recipe.id}
+                recipeName={recipe.title}
+                triggerClassName="sc-button sc-button-primary sc-cooked-detail-button"
+                triggerLabel="I Cooked This!"
+              />
               <button
                 type="button"
                 className={`sc-button sc-button-primary sc-made-button ${recipe.made ? "is-made" : ""}`}

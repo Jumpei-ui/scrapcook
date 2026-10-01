@@ -10,6 +10,7 @@ import {
   LoaderCircle,
   Plus,
   Search,
+  TrendingUp,
   Sparkles,
   X,
 } from "lucide-react";
@@ -26,6 +27,7 @@ import type {
   RecipeSummary,
   ScrapCookSession,
 } from "@workspace/api-client-react";
+import CookedMealDialog from "@/components/cooked-meal-dialog";
 
 type FlowStep = "ingredients" | "preferences" | "results";
 type EquipmentChoice = CookingPreferences["equipment"][number];
@@ -112,6 +114,10 @@ function Header() {
         <Leaf size={15} />
         <span>Good food. Less waste.</span>
       </div>
+      <nav className="sc-header-links" aria-label="Your ScrapCook">
+        <Link href="/savings" className="sc-nav-link"><TrendingUp size={15} /> Savings</Link>
+        <Link href="/settings" className="sc-nav-link">Settings</Link>
+      </nav>
     </header>
   );
 }
@@ -441,6 +447,12 @@ function RecipeCard({ recipe, index }: { recipe: RecipeSummary; index: number })
         >
           View recipe <ArrowRight size={16} />
         </Link>
+        <CookedMealDialog
+          recipeId={recipe.id}
+          recipeName={recipe.title}
+          triggerClassName="sc-card-cooked-link"
+          triggerLabel="I Cooked This!"
+        />
       </div>
     </article>
   );

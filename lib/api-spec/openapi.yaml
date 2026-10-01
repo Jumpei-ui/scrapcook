@@ -12,6 +12,8 @@ tags:
     description: Health operations
   - name: scrapcook
     description: ScrapCook cooking session and recipe operations
+  - name: savings
+    description: ScrapCook savings records and dashboard
 paths:
   /healthz:
     get:
@@ -123,6 +125,120 @@ paths:
                 $ref: "#/components/schemas/MadeRecipe"
         "404":
           description: Recipe is not in this session
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+  /scrapcook/savings/dashboard:
+    get:
+      operationId: getScrapCookSavingsDashboard
+      tags: [savings]
+      summary: Get the current user's savings dashboard
+      responses:
+        "200":
+          description: Savings totals, daily chart data, recent meals, and comparison preference
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SavingsDashboard"
+        "500":
+          description: Could not load savings data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+  /scrapcook/savings/estimate:
+    post:
+      operationId: estimateScrapCookRecipeCost
+      tags: [savings]
+      summary: Estimate the ingredient cost per serving for a recipe
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RecipeCostEstimateInput"
+      responses:
+        "200":
+          description: Editable rough Australian grocery cost estimate
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RecipeCostEstimate"
+        "400":
+          description: Recipe identifier is invalid
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "404":
+          description: Recipe is not in the current session
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "502":
+          description: Recipe details could not be loaded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+  /scrapcook/savings/meals:
+    post:
+      operationId: createScrapCookMeal
+      tags: [savings]
+      summary: Save a cooked meal and its calculated savings
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CookedMealInput"
+      responses:
+        "201":
+          description: Cooked meal saved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CookedMeal"
+        "400":
+          description: Meal details are invalid
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "500":
+          description: Meal could not be saved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+  /scrapcook/savings/settings:
+    put:
+      operationId: updateScrapCookSavingsSettings
+      tags: [savings]
+      summary: Save the default meal comparison
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SavingsSettingsInput"
+      responses:
+        "200":
+          description: Updated comparison preference
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SavingsComparison"
+        "400":
+          description: Settings are invalid
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "500":
+          description: Settings could not be saved
           content:
             application/json:
               schema:
@@ -261,6 +377,117 @@ components:
         made:
           type: boolean
       required: [recipeId, made]
+    SavingsComparison:
+      type: object
+      properties:
+        label:
+          type: string
+          enum: [Takeaway, Uber Eats, HelloFresh, Woolies new shop]
+        cost:
+          type: number
+          minimum: 0
+      required: [label, cost]
+    SavingsSettingsInput:
+      type: object
+      properties:
+        label:
+          type: string
+          enum: [Takeaway, Uber Eats, HelloFresh, Woolies new shop]
+        cost:
+          type: number
+          minimum: 0
+      required: [label, cost]
+    CookedMealInput:
+      type: object
+      properties:
+        recipeName:
+          type: string
+          minLength: 1
+          maxLength: 200
+        actualCost:
+          type: number
+          minimum: 0
+        comparedToLabel:
+          type: string
+          enum: [Takeaway, Uber Eats, HelloFresh, Woolies new shop]
+        comparedToCost:
+          type: number
+          minimum: 0
+      required: [recipeName, actualCost, comparedToLabel, comparedToCost]
+    CookedMeal:
+      type: object
+      properties:
+        id:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+        recipeName:
+          type: string
+        actualCost:
+          type: number
+        comparedToLabel:
+          type: string
+        comparedToCost:
+          type: number
+        amountSaved:
+          type: number
+      required:
+        [id, createdAt, recipeName, actualCost, comparedToLabel, comparedToCost, amountSaved]
+    SavingsDailyTotal:
+      type: object
+      properties:
+        date:
+          type: string
+          format: date
+        amountSaved:
+          type: number
+      required: [date, amountSaved]
+    SavingsDashboard:
+      type: object
+      properties:
+        todaySavings:
+          type: number
+        weekSavings:
+          type: number
+        monthSavings:
+          type: number
+        yearSavings:
+          type: number
+        dailySavings:
+          type: array
+          items:
+            $ref: "#/components/schemas/SavingsDailyTotal"
+          minItems: 7
+          maxItems: 7
+        recentMeals:
+          type: array
+          items:
+            $ref: "#/components/schemas/CookedMeal"
+        defaultComparison:
+          $ref: "#/components/schemas/SavingsComparison"
+      required:
+        [todaySavings, weekSavings, monthSavings, yearSavings, dailySavings, recentMeals, defaultComparison]
+    RecipeCostEstimateInput:
+      type: object
+      properties:
+        recipeId:
+          type: string
+          minLength: 1
+          maxLength: 100
+      required: [recipeId]
+    RecipeCostEstimate:
+      type: object
+      properties:
+        estimatedCostPerServe:
+          type: number
+          minimum: 0
+        estimateType:
+          type: string
+          enum: [reference]
+        note:
+          type: string
+      required: [estimatedCostPerServe, estimateType, note]
     ApiError:
       type: object
       properties:

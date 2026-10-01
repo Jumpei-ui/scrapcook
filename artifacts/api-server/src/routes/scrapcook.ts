@@ -1,7 +1,10 @@
 import { Router, type IRouter } from "express";
+import savingsRouter from "./savings";
 
 const router: IRouter = Router();
 const pythonPort = Number(process.env.SCRAPCOOK_PY_PORT ?? 5087);
+
+router.use("/scrapcook/savings", savingsRouter);
 
 router.use("/scrapcook", async (req, res) => {
   try {
@@ -30,7 +33,7 @@ router.use("/scrapcook", async (req, res) => {
     const responseType = upstream.headers.get("content-type");
     const setCookie = upstream.headers.get("set-cookie");
     if (responseType) res.setHeader("content-type", responseType);
-    if (setCookie) res.setHeader("set-cookie", setCookie);
+    if (setCookie) res.append("set-cookie", setCookie);
     res.status(upstream.status).send(await upstream.text());
   } catch (error) {
     req.log.error({ err: error }, "ScrapCook Python API is unavailable");

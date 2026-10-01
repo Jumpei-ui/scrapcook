@@ -110,6 +110,112 @@ export interface MadeRecipe {
   made: boolean;
 }
 
+export type SavingsComparisonLabel = typeof SavingsComparisonLabel[keyof typeof SavingsComparisonLabel];
+
+
+export const SavingsComparisonLabel = {
+  Takeaway: 'Takeaway',
+  Uber_Eats: 'Uber Eats',
+  HelloFresh: 'HelloFresh',
+  Woolies_new_shop: 'Woolies new shop',
+} as const;
+
+export interface SavingsComparison {
+  label: SavingsComparisonLabel;
+  /** @minimum 0 */
+  cost: number;
+}
+
+export type SavingsSettingsInputLabel = typeof SavingsSettingsInputLabel[keyof typeof SavingsSettingsInputLabel];
+
+
+export const SavingsSettingsInputLabel = {
+  Takeaway: 'Takeaway',
+  Uber_Eats: 'Uber Eats',
+  HelloFresh: 'HelloFresh',
+  Woolies_new_shop: 'Woolies new shop',
+} as const;
+
+export interface SavingsSettingsInput {
+  label: SavingsSettingsInputLabel;
+  /** @minimum 0 */
+  cost: number;
+}
+
+export type CookedMealInputComparedToLabel = typeof CookedMealInputComparedToLabel[keyof typeof CookedMealInputComparedToLabel];
+
+
+export const CookedMealInputComparedToLabel = {
+  Takeaway: 'Takeaway',
+  Uber_Eats: 'Uber Eats',
+  HelloFresh: 'HelloFresh',
+  Woolies_new_shop: 'Woolies new shop',
+} as const;
+
+export interface CookedMealInput {
+  /**
+     * @minLength 1
+     * @maxLength 200
+     */
+  recipeName: string;
+  /** @minimum 0 */
+  actualCost: number;
+  comparedToLabel: CookedMealInputComparedToLabel;
+  /** @minimum 0 */
+  comparedToCost: number;
+}
+
+export interface CookedMeal {
+  id: number;
+  createdAt: string;
+  recipeName: string;
+  actualCost: number;
+  comparedToLabel: string;
+  comparedToCost: number;
+  amountSaved: number;
+}
+
+export interface SavingsDailyTotal {
+  date: string;
+  amountSaved: number;
+}
+
+export interface SavingsDashboard {
+  todaySavings: number;
+  weekSavings: number;
+  monthSavings: number;
+  yearSavings: number;
+  /**
+     * @minItems 7
+     * @maxItems 7
+     */
+  dailySavings: SavingsDailyTotal[];
+  recentMeals: CookedMeal[];
+  defaultComparison: SavingsComparison;
+}
+
+export interface RecipeCostEstimateInput {
+  /**
+     * @minLength 1
+     * @maxLength 100
+     */
+  recipeId: string;
+}
+
+export type RecipeCostEstimateEstimateType = typeof RecipeCostEstimateEstimateType[keyof typeof RecipeCostEstimateEstimateType];
+
+
+export const RecipeCostEstimateEstimateType = {
+  reference: 'reference',
+} as const;
+
+export interface RecipeCostEstimate {
+  /** @minimum 0 */
+  estimatedCostPerServe: number;
+  estimateType: RecipeCostEstimateEstimateType;
+  note: string;
+}
+
 export interface ApiError {
   error: string;
 }

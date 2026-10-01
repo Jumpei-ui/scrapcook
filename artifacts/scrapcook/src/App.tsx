@@ -6,6 +6,8 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/not-found";
 import HomePage from "@/pages/home";
 import RecipePage from "@/pages/recipe-page";
+import SavingsPage from "@/pages/savings";
+import SettingsPage from "@/pages/settings";
 import {
   Route,
   Switch,
@@ -17,8 +19,9 @@ import "@/styles/scrapcook.css";
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      refetchOnWindowFocus: true,
+      refetchOnWindowFocus: false,
       retry: 1,
+      staleTime: 5 * 60 * 1000,
     },
   },
 });
@@ -29,6 +32,8 @@ function Router() {
       <Switch>
         <Route path="/" component={HomePage} />
         <Route path="/recipe/:recipeId" component={RecipePage} />
+        <Route path="/savings" component={SavingsPage} />
+        <Route path="/settings" component={SettingsPage} />
         <Route component={NotFound} />
       </Switch>
     </RoutedErrorBoundary>

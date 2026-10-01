@@ -21,10 +21,17 @@ import type {
 
 import type {
   ApiError,
+  CookedMeal,
+  CookedMealInput,
   HealthStatus,
   MadeRecipe,
+  RecipeCostEstimate,
+  RecipeCostEstimateInput,
   RecipeDetail,
   RecipeResults,
+  SavingsComparison,
+  SavingsDashboard,
+  SavingsSettingsInput,
   ScrapCookSession,
   ScrapCookSessionInput
 } from './api.schemas';
@@ -522,5 +529,346 @@ export const useMarkScrapCookRecipeMade = <TError = ErrorType<ApiError>,
         TContext
       > => {
       return useMutation(getMarkScrapCookRecipeMadeMutationOptions(options));
+    }
+
+export const getGetScrapCookSavingsDashboardUrl = () => {
+
+
+
+
+  return `/api/scrapcook/savings/dashboard`
+}
+
+/**
+ * @summary Get the current user's savings dashboard
+ */
+export const getScrapCookSavingsDashboard = async ( options?: Parameters<typeof customFetch>[1]): Promise<SavingsDashboard> => {
+
+  return customFetch<SavingsDashboard>(getGetScrapCookSavingsDashboardUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetScrapCookSavingsDashboardQueryKey = () => {
+    return [
+    `/api/scrapcook/savings/dashboard`
+    ] as const;
+    }
+
+
+export const getGetScrapCookSavingsDashboardQueryOptions = <TData = Awaited<ReturnType<typeof getScrapCookSavingsDashboard>>, TError = ErrorType<ApiError>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getScrapCookSavingsDashboard>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetScrapCookSavingsDashboardQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getScrapCookSavingsDashboard>>> = ({ signal }) => getScrapCookSavingsDashboard({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getScrapCookSavingsDashboard>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetScrapCookSavingsDashboardQueryResult = NonNullable<Awaited<ReturnType<typeof getScrapCookSavingsDashboard>>>
+export type GetScrapCookSavingsDashboardQueryError = ErrorType<ApiError>
+
+
+/**
+ * @summary Get the current user's savings dashboard
+ */
+
+export function useGetScrapCookSavingsDashboard<TData = Awaited<ReturnType<typeof getScrapCookSavingsDashboard>>, TError = ErrorType<ApiError>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getScrapCookSavingsDashboard>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetScrapCookSavingsDashboardQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getEstimateScrapCookRecipeCostUrl = () => {
+
+
+
+
+  return `/api/scrapcook/savings/estimate`
+}
+
+/**
+ * @summary Estimate the ingredient cost per serving for a recipe
+ */
+export const estimateScrapCookRecipeCost = async (recipeCostEstimateInput: RecipeCostEstimateInput, options?: Parameters<typeof customFetch>[1]): Promise<RecipeCostEstimate> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<RecipeCostEstimate>(getEstimateScrapCookRecipeCostUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(recipeCostEstimateInput)
+  }
+);}
+
+
+
+
+
+export const getEstimateScrapCookRecipeCostMutationKey = () => ['estimateScrapCookRecipeCost'] as const;
+
+export const getEstimateScrapCookRecipeCostMutationOptions = <TError = ErrorType<ApiError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof estimateScrapCookRecipeCost>>, TError,EstimateScrapCookRecipeCostMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof estimateScrapCookRecipeCost>>, TError,EstimateScrapCookRecipeCostMutationVariables, TContext> => {
+
+const mutationKey = getEstimateScrapCookRecipeCostMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof estimateScrapCookRecipeCost>>, EstimateScrapCookRecipeCostMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  estimateScrapCookRecipeCost(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type EstimateScrapCookRecipeCostMutationResult = NonNullable<Awaited<ReturnType<typeof estimateScrapCookRecipeCost>>>
+    export type EstimateScrapCookRecipeCostMutationBody = BodyType<RecipeCostEstimateInput>
+    export type EstimateScrapCookRecipeCostMutationError = ErrorType<ApiError>
+    export type EstimateScrapCookRecipeCostMutationVariables = {data: BodyType<RecipeCostEstimateInput>}
+
+    /**
+ * @summary Estimate the ingredient cost per serving for a recipe
+ */
+export const useEstimateScrapCookRecipeCost = <TError = ErrorType<ApiError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof estimateScrapCookRecipeCost>>, TError,EstimateScrapCookRecipeCostMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof estimateScrapCookRecipeCost>>,
+        TError,
+        EstimateScrapCookRecipeCostMutationVariables,
+        TContext
+      > => {
+      return useMutation(getEstimateScrapCookRecipeCostMutationOptions(options));
+    }
+
+export const getCreateScrapCookMealUrl = () => {
+
+
+
+
+  return `/api/scrapcook/savings/meals`
+}
+
+/**
+ * @summary Save a cooked meal and its calculated savings
+ */
+export const createScrapCookMeal = async (cookedMealInput: CookedMealInput, options?: Parameters<typeof customFetch>[1]): Promise<CookedMeal> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<CookedMeal>(getCreateScrapCookMealUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(cookedMealInput)
+  }
+);}
+
+
+
+
+
+export const getCreateScrapCookMealMutationKey = () => ['createScrapCookMeal'] as const;
+
+export const getCreateScrapCookMealMutationOptions = <TError = ErrorType<ApiError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createScrapCookMeal>>, TError,CreateScrapCookMealMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createScrapCookMeal>>, TError,CreateScrapCookMealMutationVariables, TContext> => {
+
+const mutationKey = getCreateScrapCookMealMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createScrapCookMeal>>, CreateScrapCookMealMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  createScrapCookMeal(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateScrapCookMealMutationResult = NonNullable<Awaited<ReturnType<typeof createScrapCookMeal>>>
+    export type CreateScrapCookMealMutationBody = BodyType<CookedMealInput>
+    export type CreateScrapCookMealMutationError = ErrorType<ApiError>
+    export type CreateScrapCookMealMutationVariables = {data: BodyType<CookedMealInput>}
+
+    /**
+ * @summary Save a cooked meal and its calculated savings
+ */
+export const useCreateScrapCookMeal = <TError = ErrorType<ApiError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createScrapCookMeal>>, TError,CreateScrapCookMealMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createScrapCookMeal>>,
+        TError,
+        CreateScrapCookMealMutationVariables,
+        TContext
+      > => {
+      return useMutation(getCreateScrapCookMealMutationOptions(options));
+    }
+
+export const getUpdateScrapCookSavingsSettingsUrl = () => {
+
+
+
+
+  return `/api/scrapcook/savings/settings`
+}
+
+/**
+ * @summary Save the default meal comparison
+ */
+export const updateScrapCookSavingsSettings = async (savingsSettingsInput: SavingsSettingsInput, options?: Parameters<typeof customFetch>[1]): Promise<SavingsComparison> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<SavingsComparison>(getUpdateScrapCookSavingsSettingsUrl(),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(savingsSettingsInput)
+  }
+);}
+
+
+
+
+
+export const getUpdateScrapCookSavingsSettingsMutationKey = () => ['updateScrapCookSavingsSettings'] as const;
+
+export const getUpdateScrapCookSavingsSettingsMutationOptions = <TError = ErrorType<ApiError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateScrapCookSavingsSettings>>, TError,UpdateScrapCookSavingsSettingsMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateScrapCookSavingsSettings>>, TError,UpdateScrapCookSavingsSettingsMutationVariables, TContext> => {
+
+const mutationKey = getUpdateScrapCookSavingsSettingsMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateScrapCookSavingsSettings>>, UpdateScrapCookSavingsSettingsMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  updateScrapCookSavingsSettings(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateScrapCookSavingsSettingsMutationResult = NonNullable<Awaited<ReturnType<typeof updateScrapCookSavingsSettings>>>
+    export type UpdateScrapCookSavingsSettingsMutationBody = BodyType<SavingsSettingsInput>
+    export type UpdateScrapCookSavingsSettingsMutationError = ErrorType<ApiError>
+    export type UpdateScrapCookSavingsSettingsMutationVariables = {data: BodyType<SavingsSettingsInput>}
+
+    /**
+ * @summary Save the default meal comparison
+ */
+export const useUpdateScrapCookSavingsSettings = <TError = ErrorType<ApiError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateScrapCookSavingsSettings>>, TError,UpdateScrapCookSavingsSettingsMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateScrapCookSavingsSettings>>,
+        TError,
+        UpdateScrapCookSavingsSettingsMutationVariables,
+        TContext
+      > => {
+      return useMutation(getUpdateScrapCookSavingsSettingsMutationOptions(options));
     }
 
