@@ -1,2 +1,3 @@
 - [Python API child process](python-api-process.md) — artifact workflows run from the API package, but Replit's Python environment is at the workspace root.
 - [ScrapCook estimate source](scrapcook-estimates.md) — use editable Australian grocery reference values; don't retry declined AI setup.
+- [ScrapCook AI scope](scrapcook-ai-scope.md) — use AI only to simplify returned recipe steps; keep search, filters, and grocery estimates outside AI.
