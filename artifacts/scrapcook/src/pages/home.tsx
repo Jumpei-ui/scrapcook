@@ -14,17 +14,17 @@ import {
   Sparkles,
   X,
 } from "lucide-react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link } from "wouter";
 import {
   getGetScrapCookSessionQueryKey,
-  useGenerateScrapCookRecipes,
   useGetScrapCookSession,
   useUpdateScrapCookSession,
 } from "@workspace/api-client-react";
 import type {
   CookingPreferences,
   RecipeSummary,
+  RecipeResults,
   ScrapCookSession,
 } from "@workspace/api-client-react";
 import CookedMealDialog from "@/components/cooked-meal-dialog";
@@ -519,11 +519,32 @@ function RecipeCard({ recipe, index }: { recipe: RecipeSummary; index: number })
   );
 }
 
+async function generateRecipesWithSavedKeys(): Promise<RecipeResults> {
+  let geminiApiKey = "";
+  let spoonacularApiKey = "";
+  try {
+    geminiApiKey = localStorage.getItem("gemini_api_key")?.trim() ?? "";
+    spoonacularApiKey = localStorage.getItem("spoonacular_api_key")?.trim() ?? "";
+  } catch {
+    throw new Error("Browser storage is unavailable. Enable it to use API keys in Settings.");
+  }
+  if (!geminiApiKey && !spoonacularApiKey) throw new Error("Add API keys in Settings");
+  const response = await fetch("/api/scrapcook/recipes", {
+    method: "POST",
+    credentials: "same-origin",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ geminiApiKey, spoonacularApiKey }),
+  });
+  const result = await response.json();
+  if (!response.ok) throw new Error(result.error ?? "Could not generate recipes. Check your API keys in Settings.");
+  return result as RecipeResults;
+}
+
 export default function HomePage() {
   const queryClient = useQueryClient();
   const sessionQuery = useGetScrapCookSession();
   const saveSession = useUpdateScrapCookSession();
-  const generateRecipes = useGenerateScrapCookRecipes();
+  const generateRecipes = useMutation({ mutationFn: generateRecipesWithSavedKeys });
   const [step, setStep] = useState<FlowStep>("ingredients");
   const [ingredients, setIngredients] = useState<string[]>([]);
   const [preferences, setPreferences] = useState<CookingPreferences>(defaultPreferences);
@@ -725,7 +746,7 @@ export default function HomePage() {
               <div className="sc-checking" role="status" data-testid="status-checking-fridge">
                 <span className="sc-checking-spinner"><LoaderCircle className="sc-spin" size={18} /></span>
                 <span>Checking your fridge…</span>
-                <span className="sc-checking-sub">Searching for up to 50 matches that fit your filters.</span>
+                <span className="sc-checking-sub">Generating up to 10 recipes from your ingredients.</span>
               </div>
             )}
           </section>
@@ -741,7 +762,7 @@ export default function HomePage() {
             {sessionQuery.data?.demoMode && (
               <div className="sc-demo-note" data-testid="status-demo-mode">
                 <span><Sparkles size={15} /> Demo recipes</span>
-                <span>Add a Spoonacular key in Replit Secrets to see live recipe matches.</span>
+                <span>Add API keys in Settings to generate recipes.</span>
               </div>
             )}
             {error && <p className="sc-alert" role="alert" data-testid="status-error">{error}</p>}

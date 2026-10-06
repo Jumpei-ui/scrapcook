@@ -1,10 +1,12 @@
 import html
 import hashlib
 import json
+import math
 import os
 import re
 import threading
 import time
+from concurrent.futures import ThreadPoolExecutor
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
@@ -218,8 +220,10 @@ def session_payload():
     preferences = normalized_preferences(session.get("preferences"))
     if preferences and preferences != session.get("preferences"):
         session["preferences"] = preferences
-    demo_mode = bool(session.get("demoMode", not SPOONACULAR_API_KEY))
-    recipes = session.get("recipes", []) if demo_mode else session_real_recipe_details()
+    demo_mode = bool(session.get("demoMode", False))
+    recipes = session.get("recipes", [])
+    if not recipes and not demo_mode and session.get("recipeIds"):
+        recipes = session_real_recipe_details()
     return {
         "ingredients": session.get("ingredients", []),
         "preferences": preferences,
@@ -277,9 +281,16 @@ def scrape_steps(information):
                 steps.append(text)
     if steps:
         return steps
-    raw = re.sub(r"<[^>]+>", " ", information.get("instructions") or "")
+    raw_instructions = information.get("instructions") or ""
+    blocks = re.findall(r"<li\b[^>]*>(.*?)</li>", raw_instructions, flags=re.I | re.S)
+    if blocks:
+        return [
+            html.unescape(re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", block))).strip()
+            for block in blocks
+        ]
+    raw = re.sub(r"<[^>]+>", " ", raw_instructions)
     raw = html.unescape(re.sub(r"\s+", " ", raw)).strip()
-    return [raw] if raw else ["Follow the preparation instructions provided with this recipe."]
+    return re.split(r"(?<=[.!?])\s+(?=[A-Z])", raw) if raw else []
 
 
 def difficulty_for(information):
@@ -295,9 +306,9 @@ def difficulty_for(information):
     return "Intermediate"
 
 
-def spoonacular_get(path, params=None):
+def spoonacular_get(path, params=None, api_key=None):
     query = dict(params or {})
-    query["apiKey"] = SPOONACULAR_API_KEY
+    query["apiKey"] = api_key or SPOONACULAR_API_KEY
     url = f"https://api.spoonacular.com{path}?{urlencode(query)}"
     request_object = Request(url, headers={"Accept": "application/json"})
     with urlopen(request_object, timeout=20) as response:
@@ -373,8 +384,9 @@ def recipe_search_cache_set(cache_key, value):
         _RECIPE_SEARCH_CACHE[cache_key] = (now + RECIPE_CACHE_TTL_SECONDS, value)
 
 
-def spoonacular_search_data(ingredients, preferences):
-    cache_key = recipe_search_cache_key(ingredients, preferences)
+def spoonacular_search_data(ingredients, preferences, api_key=None):
+    credential = hashlib.sha256((api_key or SPOONACULAR_API_KEY).encode()).hexdigest()
+    cache_key = recipe_search_cache_key(ingredients, preferences) + ":10:1:" + credential
     cached = recipe_search_cache_get(cache_key)
     if cached is not None:
         return cache_key, cached
@@ -383,10 +395,11 @@ def spoonacular_search_data(ingredients, preferences):
         "/recipes/findByIngredients",
         {
             "ingredients": ",".join(ingredients),
-            "number": 50,
-            "ranking": 2,
+            "number": 10,
+            "ranking": 1,
             "ignorePantry": "true",
         },
+        api_key=api_key,
     )
     if not isinstance(found, list):
         raise ValueError("Spoonacular returned an invalid recipe list.")
@@ -396,6 +409,7 @@ def spoonacular_search_data(ingredients, preferences):
         information = spoonacular_get(
             "/recipes/informationBulk",
             {"ids": ",".join(recipe_ids), "includeNutrition": "false"},
+            api_key=api_key,
         )
         if not isinstance(information, list):
             raise ValueError("Spoonacular returned invalid recipe details.")
@@ -458,12 +472,157 @@ def filtered_recipe_details(search_data, preferences):
 
 
 def session_real_recipe_details():
+    cached = recipe_search_cache_get(session.get("recipeSearchKey"))
+    if isinstance(cached, list):
+        return cached
     ingredients = session.get("ingredients", [])
     preferences = normalized_preferences(session.get("preferences"))
     if not SPOONACULAR_API_KEY or not ingredients or not preferences:
         return []
     _cache_key, search_data = spoonacular_search_data(ingredients, preferences)
     return filtered_recipe_details(search_data, preferences)
+
+
+def gemini_json(api_key, prompt):
+    url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent"
+    payload = json.dumps({
+        "contents": [{"parts": [{"text": prompt}]}],
+        "generationConfig": {"responseMimeType": "application/json"},
+    }).encode()
+    provider_request = Request(
+        url, data=payload, method="POST",
+        headers={"Content-Type": "application/json", "x-goog-api-key": api_key},
+    )
+    for attempt in range(3):
+        try:
+            with urlopen(provider_request, timeout=40) as response:
+                result = json.loads(response.read().decode())
+            parts = result["candidates"][0]["content"]["parts"]
+            text = "".join(part.get("text", "") for part in parts)
+            return json.loads(re.sub(r"^```(?:json)?\s*|\s*```$", "", text.strip()))
+        except HTTPError as error:
+            if error.code not in {429, 503} or attempt == 2:
+                raise
+            time.sleep(2 ** attempt)
+
+
+def positive_number(value, fallback):
+    match = re.search(r"\d+(?:\.\d+)?", str(value))
+    return max(1, int(float(match.group()))) if match else fallback
+
+
+def gemini_recipe(data, pantry, source=None):
+    if not isinstance(data, dict) or not isinstance(data.get("title"), str) or not data["title"].strip():
+        raise ValueError("Invalid recipe format.")
+    steps = data.get("steps")
+    raw_ingredients = data.get("ingredients")
+    if (
+        not isinstance(steps, list) or len(steps) < 2
+        or any(not isinstance(step, str) or not step.strip() for step in steps)
+        or not isinstance(raw_ingredients, list) or not raw_ingredients
+    ):
+        raise ValueError("Recipe ingredients or detailed steps are missing.")
+    ingredients = []
+    for item in raw_ingredients:
+        if isinstance(item, str):
+            original = item.strip()
+            match = re.match(
+                r"^(\d+(?:\.\d+)?(?:/\d+)?|[¼½¾])\s*(kg|g|ml|l|cups?|tbsp|tsp|tablespoons?|teaspoons?|cloves?|slices?)?\s+(.+)$",
+                original, re.I,
+            )
+            amount, unit, name = 0, "", original
+            if match:
+                quantity, unit, name = match.groups()
+                fractions = {"¼": 0.25, "½": 0.5, "¾": 0.75}
+                if quantity in fractions:
+                    amount = fractions[quantity]
+                elif "/" in quantity:
+                    numerator, denominator = quantity.split("/")
+                    if float(denominator) == 0:
+                        raise ValueError("Invalid ingredient quantity.")
+                    amount = float(numerator) / float(denominator)
+                else:
+                    amount = float(quantity)
+                unit = unit or ""
+        elif isinstance(item, dict):
+            name = str(item.get("name") or item.get("ingredient") or "").strip()
+            try:
+                amount = float(item.get("amount") or 0)
+            except (TypeError, ValueError):
+                amount = 0
+            unit = str(item.get("unit") or "")
+            original = str(item.get("original") or " ".join(
+                str(value) for value in [amount if amount else "", unit, name] if value != ""
+            ))
+        else:
+            raise ValueError("Invalid ingredient format.")
+        if not name:
+            raise ValueError("An ingredient is missing its name.")
+        if not math.isfinite(amount) or amount < 0:
+            raise ValueError("Invalid ingredient amount.")
+        ingredients.append({
+            "name": name, "original": original, "amount": amount, "unit": unit,
+            "inFridge": has_ingredient(name, pantry),
+        })
+    source = source or {}
+    minutes = positive_number(data.get("cookTime"), source.get("readyInMinutes", 30))
+    return {
+        "id": source.get("id", ""), "title": data["title"].strip(),
+        "image": source.get("image") or DEMO_RECIPES["demo-tomato-pasta"]["image"],
+        "readyInMinutes": minutes, "servings": positive_number(data.get("servings"), 2),
+        "difficulty": "Beginner" if minutes <= 30 and len(steps) <= 5 else "Intermediate",
+        "missingIngredients": sum(not ingredient["inFridge"] for ingredient in ingredients),
+        "ingredients": ingredients, "instructions": [step.strip() for step in steps],
+        "instructionsSimplified": True,
+        "instructionsNote": "Detailed steps generated by Gemini. Review measurements and food-safety instructions before cooking."
+            + ("" if source.get("image") else " Photo is illustrative."),
+    }
+
+
+def hybrid_recipes(pantry, preferences, spoonacular_key, gemini_key):
+    output_shape = (
+        " Ingredients must include exact amounts; use objects with name, amount (number), unit, "
+        "and original (amount plus ingredient). Steps must be an array of separate detailed strings."
+    )
+    if not spoonacular_key:
+        prompt = (
+            "You are a chef. Generate 10 recipes using this pantry, with very specific step-by-step "
+            "instructions including exact measurements, temperatures, times, and beginner tips. "
+            f"Pantry: {json.dumps(pantry)}. Preferences: {json.dumps(preferences)}. "
+            "Return JSON {\"recipes\": [{\"title\": \"\", \"cookTime\": 30, \"servings\": 2, "
+            "\"ingredients\": [], \"steps\": []}]}." + output_shape
+        )
+        result = gemini_json(gemini_key, prompt)
+        recipes = result.get("recipes") if isinstance(result, dict) else result
+        if not isinstance(recipes, list) or not recipes:
+            raise ValueError("Gemini did not return recipes.")
+        details = [gemini_recipe(recipe, pantry) for recipe in recipes[:10]]
+    else:
+        _key, search_data = spoonacular_search_data(pantry, preferences, api_key=spoonacular_key)
+        details = filtered_recipe_details(search_data, preferences)
+        if not gemini_key:
+            details = [recipe for recipe in details if recipe["instructions"]]
+        if gemini_key:
+            def expand(source):
+                spoonacular_data = {"title": source["title"], "ingredients": source["ingredients"]}
+                prompt = (
+                    "You are a chef. Rewrite this recipe with very specific step-by-step instructions "
+                    "including exact measurements, temperatures, times, and beginner tips. "
+                    f"Pantry: {json.dumps(pantry)}. Recipe: {json.dumps(spoonacular_data)}. "
+                    "Return JSON {title, cookTime, servings, ingredients[], steps[]}" + output_shape
+                )
+                try:
+                    return gemini_recipe(gemini_json(gemini_key, prompt), pantry, source)
+                except (HTTPError, URLError, TimeoutError, ValueError, KeyError, IndexError, TypeError):
+                    return {
+                        **source,
+                        "instructionsNote": "Gemini could not expand this recipe. Showing Spoonacular's original steps."
+                            if source["instructions"] else "Neither provider supplied cooking steps for this recipe.",
+                    }
+            with ThreadPoolExecutor(max_workers=3) as pool:
+                details = list(pool.map(expand, details))
+    maximum = int(preferences.get("maxReadyTime") or 0)
+    return [recipe for recipe in details if not maximum or recipe["readyInMinutes"] <= maximum]
 
 
 def demo_recipe_detail(recipe_id):
@@ -602,7 +761,7 @@ def update_session():
     session["recipeIds"] = []
     session["recipeSearchKey"] = None
     session["madeRecipeIds"] = []
-    session["demoMode"] = not SPOONACULAR_API_KEY
+    session["demoMode"] = False
     session.permanent = True
     return jsonify(session_payload())
 
@@ -614,39 +773,30 @@ def generate_recipes():
     if len(ingredients) < 3 or not preferences:
         return error_response("Add at least three ingredients and choose your preferences first.", 400)
 
-    if not SPOONACULAR_API_KEY:
-        recipes = ranked_demo_recipes(preferences)
-        session["recipes"] = [
-            {
-                key: recipe[key]
-                for key in (
-                    "id",
-                    "title",
-                    "image",
-                    "readyInMinutes",
-                    "difficulty",
-                    "missingIngredients",
-                    "servings",
-                )
-            }
-            for recipe in recipes
-        ]
-        session["recipeIds"] = [str(recipe["id"]) for recipe in recipes]
-        session["recipeSearchKey"] = None
-        session["demoMode"] = True
-        session["madeRecipeIds"] = []
-        session.permanent = True
-        return jsonify(
-            {
-                "recipes": [recipe_summary(recipe) for recipe in session["recipes"]],
-                "demoMode": True,
-            }
-        )
+    body = request.get_json(silent=True) or {}
+    spoonacular_key = body.get("spoonacularApiKey", "")
+    gemini_key = body.get("geminiApiKey", "")
+    if not isinstance(spoonacular_key, str) or not isinstance(gemini_key, str):
+        return error_response("Enter valid API keys in Settings.", 400)
+    spoonacular_key, gemini_key = spoonacular_key.strip(), gemini_key.strip()
+    if not spoonacular_key and not gemini_key:
+        return error_response("Add API keys in Settings", 400)
 
     try:
-        search_key, search_data = spoonacular_search_data(ingredients, preferences)
-        details = filtered_recipe_details(search_data, preferences)
-        session["recipes"] = []
+        search_key = "hybrid:" + hashlib.sha256(json.dumps(
+            [ingredients, preferences, spoonacular_key, gemini_key], sort_keys=True,
+        ).encode()).hexdigest()
+        details = recipe_search_cache_get(search_key)
+        if details is None:
+            details = hybrid_recipes(ingredients, preferences, spoonacular_key, gemini_key)
+            batch_id = os.urandom(10).hex()
+            details = [
+                {**recipe, "id": f"generated-{batch_id}-{index}"}
+                for index, recipe in enumerate(details)
+            ]
+            recipe_search_cache_set(search_key, details)
+        session["madeRecipeIds"] = []
+        session["recipes"] = [recipe_summary(recipe) for recipe in details]
         session["recipeIds"] = [str(recipe["id"]) for recipe in details]
         session["recipeSearchKey"] = search_key
         session["demoMode"] = False
@@ -658,10 +808,10 @@ def generate_recipes():
                 "demoMode": False,
             }
         )
-    except (HTTPError, URLError, TimeoutError, json.JSONDecodeError, KeyError, ValueError):
-        app.logger.exception("Recipe provider request failed")
+    except (HTTPError, URLError, TimeoutError, KeyError, IndexError, ValueError, TypeError):
+        app.logger.error("Recipe provider request failed; credentials and provider response omitted.")
         return error_response(
-            "Spoonacular could not provide recipes right now. Check the Spoonacular key and try again.",
+            "Could not generate recipes right now. Check your API keys in Settings and try again.",
             502,
         )
 
@@ -670,6 +820,13 @@ def generate_recipes():
 def get_recipe(recipe_id):
     if recipe_id not in session_recipe_ids():
         return error_response("This recipe is no longer in your cooking session. Generate recipes again.", 404)
+    search_key = session.get("recipeSearchKey", "")
+    if isinstance(search_key, str) and search_key.startswith("hybrid:"):
+        details = recipe_search_cache_get(search_key)
+        detail = next((recipe for recipe in details or [] if recipe["id"] == recipe_id), None)
+        if detail is None:
+            return error_response("This recipe's details have expired. Generate recipes again.", 404)
+        return jsonify({**detail, "made": recipe_id in session.get("madeRecipeIds", [])})
     if session.get("demoMode"):
         detail = demo_recipe_detail(recipe_id)
         if detail is None:
@@ -712,7 +869,7 @@ def get_recipe(recipe_id):
         )
         return jsonify({**detail, "made": recipe_id in session.get("madeRecipeIds", [])})
     except (HTTPError, URLError, TimeoutError, json.JSONDecodeError, KeyError, ValueError):
-        app.logger.exception("Recipe detail request failed")
+        app.logger.error("Recipe detail request failed; credentials and provider response omitted.")
         return error_response("Could not load this recipe right now. Please try again.", 502)
 
 

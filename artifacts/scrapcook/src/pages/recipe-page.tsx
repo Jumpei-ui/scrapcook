@@ -198,7 +198,7 @@ function RecipeContent({
                   <span className="sc-section-number sc-section-orange">02</span>
                   <div>
                     <h2 id="instructions-heading">Let’s make it</h2>
-                    <p>{recipe.instructionsSimplified ? "Student-friendly steps" : "Recipe instructions"}</p>
+                    <p>{recipe.instructionsSimplified ? "Detailed beginner-friendly steps" : "Recipe instructions"}</p>
                   </div>
                 </div>
                 {(recipe.instructionsSimplified || recipe.instructionsNote) && (
@@ -208,7 +208,7 @@ function RecipeContent({
                     data-testid="status-instruction-simplification"
                   >
                     {recipe.instructionsNote
-                      ?? "Simplified for students. Original timings and quantities are preserved."}
+                      ?? "Detailed steps expanded by Gemini, including measurements, timings, and beginner tips."}
                   </p>
                 )}
                 <ol className="sc-instructions-list">
