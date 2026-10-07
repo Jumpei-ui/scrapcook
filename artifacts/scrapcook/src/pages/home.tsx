@@ -194,98 +194,50 @@ function IngredientCard({
   setIngredients: (next: string[]) => void;
 }) {
   const [search, setSearch] = useState("");
-  const [showSuggestions, setShowSuggestions] = useState(false);
-  const filtered = useMemo(() => {
-    const query = search.trim().toLowerCase();
-    return commonIngredients
-      .filter((name) => !ingredients.some((item) => item.toLowerCase() === name.toLowerCase()))
-      .filter((name) => !query || name.toLowerCase().includes(query))
-      .slice(0, 8);
-  }, [ingredients, search]);
 
   const addIngredient = (rawName: string) => {
-    const value = rawName.trim().replace(/\s+/g, " ").slice(0, 60);
-    if (!value || ingredients.some((item) => item.toLowerCase() === value.toLowerCase())) {
+    const value = rawName.trim().toLowerCase().slice(0, 30);
+    if (!value || ingredients.some((item) => item.trim().toLowerCase() === value)) {
       setSearch("");
       return;
     }
     if (ingredients.length >= 40) return;
     setIngredients([...ingredients, value]);
     setSearch("");
-    setShowSuggestions(false);
   };
 
   return (
     <div className="sc-card sc-ingredient-card">
       <div className="sc-card-kicker"><span className="sc-kicker-dot" /> YOUR INGREDIENTS</div>
-      <label className="sc-search-wrap" htmlFor="ingredient-search">
+      <form
+        className="sc-search-wrap"
+        onSubmit={(event) => {
+          event.preventDefault();
+          addIngredient(search);
+        }}
+      >
         <Search size={18} aria-hidden="true" />
         <input
           id="ingredient-search"
-          type="search"
+          type="text"
+          aria-label="Ingredient"
           value={search}
-          onChange={(event) => {
-            setSearch(event.target.value);
-            setShowSuggestions(true);
-          }}
-          onFocus={() => setShowSuggestions(true)}
-          onKeyDown={(event) => {
-            if (event.key === "Enter") {
-              event.preventDefault();
-              addIngredient(search);
-            }
-            if (event.key === "Escape") setShowSuggestions(false);
-          }}
-          placeholder="Search or type an ingredient…"
+          onChange={(event) => setSearch(event.target.value)}
+          maxLength={30}
+          placeholder="Type any ingredient... baking powder, mango, milk, chili flakes"
           autoComplete="off"
-          role="combobox"
-          aria-autocomplete="list"
-          aria-expanded={showSuggestions && filtered.length > 0}
-          aria-controls="ingredient-options"
           data-testid="input-ingredient-search"
         />
-        {search.trim() && (
-          <button
-            className="sc-search-add"
-            type="button"
-            onClick={() => addIngredient(search)}
-            aria-label={`Add ${search.trim()}`}
-            data-testid="button-add-custom-ingredient"
-          >
-            <Plus size={16} />
-          </button>
-        )}
-      </label>
-
-      {showSuggestions && (filtered.length > 0 || search.trim()) && (
-        <div className="sc-suggestions" id="ingredient-options" role="listbox" aria-label="Ingredient suggestions">
-          {filtered.map((name) => (
-            <button
-              type="button"
-              role="option"
-              aria-selected="false"
-              className="sc-suggestion"
-              key={name}
-              onMouseDown={(event) => event.preventDefault()}
-              onClick={() => addIngredient(name)}
-              data-testid={`option-ingredient-${name.toLowerCase().replace(/\s+/g, "-")}`}
-            >
-              <span>{name}</span><Plus size={15} />
-            </button>
-          ))}
-          {search.trim() && !commonIngredients.some((name) => name.toLowerCase() === search.trim().toLowerCase()) && (
-            <button
-              type="button"
-              className="sc-suggestion sc-suggestion-custom"
-              onMouseDown={(event) => event.preventDefault()}
-              onClick={() => addIngredient(search)}
-              data-testid="option-add-custom-ingredient"
-            >
-              <span>Add “{search.trim()}”</span><Plus size={15} />
-            </button>
-          )}
-        </div>
-      )}
+        <button
+          className="sc-search-add"
+          style={{ width: "auto", padding: "0 10px", whiteSpace: "nowrap" }}
+          type="submit"
+          disabled={!search.trim() || ingredients.length >= 40}
+          data-testid="button-add-custom-ingredient"
+        >
+          Add Ingredient
+        </button>
+      </form>
 
       <div className="sc-selected-heading">
         <span>In your fridge</span>
@@ -313,25 +265,7 @@ function IngredientCard({
           <span>Add a few ingredients to get started.</span>
         </div>
       )}
-      <div className="sc-quick-picks">
-        <span className="sc-quick-label">Popular</span>
-        {commonIngredients.slice(0, 7).map((name) => {
-          const selected = ingredients.some((item) => item.toLowerCase() === name.toLowerCase());
-          return (
-            <button
-              type="button"
-              className={`sc-quick-pick ${selected ? "is-selected" : ""}`}
-              key={name}
-              onClick={() => selected ? setIngredients(ingredients.filter((item) => item.toLowerCase() !== name.toLowerCase())) : addIngredient(name)}
-              aria-pressed={selected}
-              data-testid={`button-quick-add-${name.toLowerCase().replace(/\s+/g, "-")}`}
-            >
-              {selected ? <Check size={12} /> : <Plus size={12} />}{name}
-            </button>
-          );
-        })}
-      </div>
-      <p className="sc-hint">Add at least 3 ingredients. You can also type your own and press Enter.</p>
+      <p className="sc-hint">Add at least 3 ingredients. Type an ingredient and press Enter or Add Ingredient.</p>
     </div>
   );
 }
