@@ -213,6 +213,7 @@ def recipe_summary(recipe):
         "missingIngredients": int(recipe.get("missingIngredients") or 0),
         "servings": int(recipe.get("servings") or 2),
         "made": str(recipe["id"]) in made_ids,
+        "nutrition": recipe.get("nutrition"),
     }
 
 
@@ -315,8 +316,33 @@ def spoonacular_get(path, params=None, api_key=None):
         return json.loads(response.read().decode("utf-8"))
 
 
+def spoonacular_nutrition(info):
+    nutrition = info.get("nutrition")
+    if not isinstance(nutrition, dict) or not isinstance(nutrition.get("nutrients"), list):
+        return None
+    nutrients = {
+        item.get("name"): item.get("amount")
+        for item in nutrition["nutrients"] if isinstance(item, dict)
+    }
+    result = {}
+    for key, name in {
+        "calories": "Calories", "protein": "Protein", "carbs": "Carbohydrates",
+        "fat": "Fat", "fiber": "Fiber",
+    }.items():
+        try:
+            amount = float(nutrients[name])
+        except (KeyError, TypeError, ValueError, OverflowError):
+            return None
+        if not math.isfinite(amount) or amount < 0:
+            return None
+        result[key] = amount
+    return result
+
+
 def spoonacular_recipe_details(search_result, information=None):
-    info = information or spoonacular_get(f"/recipes/{search_result['id']}/information")
+    info = information or spoonacular_get(
+        f"/recipes/{search_result['id']}/information", {"includeNutrition": "true"},
+    )
     fridge_ingredients = session.get("ingredients", [])
     ingredients = []
     for item in info.get("extendedIngredients") or []:
@@ -341,6 +367,7 @@ def spoonacular_recipe_details(search_result, information=None):
         "difficulty": difficulty_for(info),
         "missingIngredients": int(missing_ingredients or 0),
         "servings": int(info.get("servings") or 2),
+        "nutrition": spoonacular_nutrition(info),
         "ingredients": ingredients,
         "instructions": scrape_steps(info),
         "instructionsSimplified": False,
@@ -409,7 +436,7 @@ def spoonacular_search_data(ingredients, preferences, api_key=None):
     if recipe_ids:
         information = spoonacular_get(
             "/recipes/informationBulk",
-            {"ids": ",".join(recipe_ids), "includeNutrition": "false"},
+            {"ids": ",".join(recipe_ids), "includeNutrition": "true"},
             api_key=api_key,
         )
         if not isinstance(information, list):
@@ -571,6 +598,7 @@ def gemini_recipe(data, pantry, source=None, minimum_steps=2):
         "id": source.get("id", ""), "title": data["title"].strip(),
         "image": source.get("image") or DEMO_RECIPES["demo-tomato-pasta"]["image"],
         "readyInMinutes": minutes, "servings": positive_number(data.get("servings"), 2),
+        "nutrition": source.get("nutrition"),
         "difficulty": "Beginner" if minutes <= 30 and len(steps) <= 5 else "Intermediate",
         "missingIngredients": sum(not ingredient["inFridge"] for ingredient in ingredients),
         "ingredients": ingredients, "instructions": [step.strip() for step in steps],
@@ -591,7 +619,7 @@ def hybrid_recipes(pantry, preferences, spoonacular_key, gemini_key, snack_mode=
             }, api_key=spoonacular_key).get("results", [])
             recipe_ids = [str(recipe["id"]) for recipe in found if recipe.get("id") is not None]
             information = spoonacular_get("/recipes/informationBulk", {
-                "ids": ",".join(recipe_ids), "includeNutrition": "false",
+                "ids": ",".join(recipe_ids), "includeNutrition": "true",
             }, api_key=spoonacular_key) if recipe_ids else []
             sources = filtered_recipe_details({
                 "found": found,
@@ -962,7 +990,7 @@ def get_recipe(recipe_id):
         if not found:
             found = spoonacular_get(
                 f"/recipes/{recipe_id}/information",
-                {"includeNutrition": "false"},
+                {"includeNutrition": "true"},
             )
         detail = spoonacular_recipe_details(
             {

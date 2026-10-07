@@ -97,6 +97,17 @@ export const RecipeSummaryDifficulty = {
   Pro: 'Pro',
 } as const;
 
+/**
+ * @nullable
+ */
+export type RecipeSummaryNutrition = {
+  calories: number;
+  protein: number;
+  carbs: number;
+  fat: number;
+  fiber: number;
+} | null;
+
 export interface RecipeSummary {
   id: string;
   title: string;
@@ -106,6 +117,8 @@ export interface RecipeSummary {
   missingIngredients: number;
   servings: number;
   made: boolean;
+  /** @nullable */
+  nutrition?: RecipeSummaryNutrition;
 }
 
 export interface RecipeIngredient {

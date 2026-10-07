@@ -40,7 +40,14 @@ export const GetScrapCookSessionResponse = zod.object({
   "difficulty": zod.enum(['Beginner', 'Intermediate', 'Pro']),
   "missingIngredients": zod.number().int(),
   "servings": zod.number().int(),
-  "made": zod.boolean()
+  "made": zod.boolean(),
+  "nutrition": zod.object({
+  "calories": zod.number(),
+  "protein": zod.number(),
+  "carbs": zod.number(),
+  "fat": zod.number(),
+  "fiber": zod.number()
+}).nullish()
 })),
   "demoMode": zod.boolean()
 })
@@ -87,7 +94,14 @@ export const UpdateScrapCookSessionResponse = zod.object({
   "difficulty": zod.enum(['Beginner', 'Intermediate', 'Pro']),
   "missingIngredients": zod.number().int(),
   "servings": zod.number().int(),
-  "made": zod.boolean()
+  "made": zod.boolean(),
+  "nutrition": zod.object({
+  "calories": zod.number(),
+  "protein": zod.number(),
+  "carbs": zod.number(),
+  "fat": zod.number(),
+  "fiber": zod.number()
+}).nullish()
 })),
   "demoMode": zod.boolean()
 })
@@ -110,7 +124,14 @@ export const GenerateScrapCookRecipesResponse = zod.object({
   "difficulty": zod.enum(['Beginner', 'Intermediate', 'Pro']),
   "missingIngredients": zod.number().int(),
   "servings": zod.number().int(),
-  "made": zod.boolean()
+  "made": zod.boolean(),
+  "nutrition": zod.object({
+  "calories": zod.number(),
+  "protein": zod.number(),
+  "carbs": zod.number(),
+  "fat": zod.number(),
+  "fiber": zod.number()
+}).nullish()
 })).min(generateScrapCookRecipesResponseRecipesMin).max(generateScrapCookRecipesResponseRecipesMax),
   "demoMode": zod.boolean()
 })
@@ -131,7 +152,14 @@ export const GetScrapCookRecipeResponse = zod.object({
   "difficulty": zod.enum(['Beginner', 'Intermediate', 'Pro']),
   "missingIngredients": zod.number().int(),
   "servings": zod.number().int(),
-  "made": zod.boolean()
+  "made": zod.boolean(),
+  "nutrition": zod.object({
+  "calories": zod.number(),
+  "protein": zod.number(),
+  "carbs": zod.number(),
+  "fat": zod.number(),
+  "fiber": zod.number()
+}).nullish()
 }).and(zod.object({
   "ingredients": zod.array(zod.object({
   "name": zod.string(),

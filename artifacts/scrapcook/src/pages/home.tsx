@@ -461,6 +461,17 @@ function RecipeCard({ recipe, index, snackMode }: { recipe: RecipeSummary; index
           triggerClassName="sc-card-cooked-link"
           triggerLabel="I Cooked This!"
         />
+        <p className="sc-hint" data-testid={`nutrition-recipe-${recipe.id}`}>
+          {recipe.nutrition ? (
+            <>
+              Nutrition per serving — Calories: {Math.round(recipe.nutrition.calories)}
+              <br />
+              Protein: {Math.round(recipe.nutrition.protein)}g | Carbs: {Math.round(recipe.nutrition.carbs)}g | Fat: {Math.round(recipe.nutrition.fat)}g | Fiber: {Math.round(recipe.nutrition.fiber)}g
+            </>
+          ) : (
+            <>Nutrition per serving<br />Nutrition info unavailable</>
+          )}
+        </p>
       </div>
     </article>
   );

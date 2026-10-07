@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { RecipeSummaryDifficulty } from './recipeSummaryDifficulty';
+import type { RecipeSummaryNutrition } from './recipeSummaryNutrition';
 
 export interface RecipeSummary {
   id: string;
@@ -16,4 +17,6 @@ export interface RecipeSummary {
   missingIngredients: number;
   servings: number;
   made: boolean;
+  /** @nullable */
+  nutrition?: RecipeSummaryNutrition;
 }

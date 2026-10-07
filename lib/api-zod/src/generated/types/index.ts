@@ -26,6 +26,7 @@ export * from './recipeIngredient';
 export * from './recipeResults';
 export * from './recipeSummary';
 export * from './recipeSummaryDifficulty';
+export * from './recipeSummaryNutrition';
 export * from './savingsComparison';
 export * from './savingsComparisonLabel';
 export * from './savingsDailyTotal';

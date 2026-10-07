@@ -20,3 +20,9 @@ Snack Mode is an opt-in addition to the existing finder, not a separate page or 
 **Why:** The user explicitly requested minimal changes, no new pages, and a simple snack alternative while keeping everything else the same.
 
 **How to apply:** Keep Snack Mode work within the existing finder and recipe-generation service; preserve the Meals flow and unrelated pages.
+
+Nutrition per serving should use provider-supplied data, not invented nutritional values.
+
+**Why:** The user requested Spoonacular nutrients and an explicit “Nutrition info unavailable” fallback when nutrition is missing.
+
+**How to apply:** Keep missing nutrition unavailable, including Gemini-only recipes, unless the user separately requests a nutrition-estimation feature.

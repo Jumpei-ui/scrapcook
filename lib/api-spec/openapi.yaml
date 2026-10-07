@@ -321,6 +321,20 @@ components:
           type: integer
         made:
           type: boolean
+        nutrition:
+          type: [object, "null"]
+          properties:
+            calories:
+              type: number
+            protein:
+              type: number
+            carbs:
+              type: number
+            fat:
+              type: number
+            fiber:
+              type: number
+          required: [calories, protein, carbs, fat, fiber]
       required: [id, title, image, readyInMinutes, difficulty, missingIngredients, servings, made]
     RecipeIngredient:
       type: object
