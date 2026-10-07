@@ -398,6 +398,7 @@ def spoonacular_search_data(ingredients, preferences, api_key=None):
             "number": 10,
             "ranking": 1,
             "ignorePantry": "true",
+            "addRecipeInformation": "true",
         },
         api_key=api_key,
     )
