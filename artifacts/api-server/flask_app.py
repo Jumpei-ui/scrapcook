@@ -512,13 +512,13 @@ def positive_number(value, fallback):
     return max(1, int(float(match.group()))) if match else fallback
 
 
-def gemini_recipe(data, pantry, source=None):
+def gemini_recipe(data, pantry, source=None, minimum_steps=2):
     if not isinstance(data, dict) or not isinstance(data.get("title"), str) or not data["title"].strip():
         raise ValueError("Invalid recipe format.")
     steps = data.get("steps")
     raw_ingredients = data.get("ingredients")
     if (
-        not isinstance(steps, list) or len(steps) < 2
+        not isinstance(steps, list) or len(steps) < minimum_steps
         or any(not isinstance(step, str) or not step.strip() for step in steps)
         or not isinstance(raw_ingredients, list) or not raw_ingredients
     ):
@@ -580,7 +580,76 @@ def gemini_recipe(data, pantry, source=None):
     }
 
 
-def hybrid_recipes(pantry, preferences, spoonacular_key, gemini_key):
+def hybrid_recipes(pantry, preferences, spoonacular_key, gemini_key, snack_mode=False):
+    if snack_mode:
+        snack_preferences = {**preferences, "maxReadyTime": 15}
+        sources = []
+        if spoonacular_key:
+            found = spoonacular_get("/recipes/complexSearch", {
+                "type": "snack", "maxReadyTime": 15, "number": 8,
+                "addRecipeInformation": "true",
+            }, api_key=spoonacular_key).get("results", [])
+            recipe_ids = [str(recipe["id"]) for recipe in found if recipe.get("id") is not None]
+            information = spoonacular_get("/recipes/informationBulk", {
+                "ids": ",".join(recipe_ids), "includeNutrition": "false",
+            }, api_key=spoonacular_key) if recipe_ids else []
+            sources = filtered_recipe_details({
+                "found": found,
+                "information": {str(recipe["id"]): recipe for recipe in information},
+            }, snack_preferences)
+            sources = [recipe for recipe in sources if not re.search(
+                r"dinner|lunch|main[\s-]+course", recipe["title"], re.I,
+            )]
+        details = sources
+        if gemini_key:
+            snack_prompt = (
+                "User wants SNACKS only, max 15 minutes, max 5 ingredients. "
+                f"Use only pantry items: {json.dumps(pantry)}. Make it simple, no cooking skills needed. "
+                "Max 50 words. Return JSON {title, time, ingredients[], steps[]}"
+            )
+
+            def make_snack(source=None):
+                prompt = snack_prompt + (
+                    f"\nRecipe data: {json.dumps(source)}" if source else ""
+                )
+                try:
+                    for attempt in range(3):
+                        data = gemini_json(gemini_key, prompt)
+                        if not isinstance(data, dict):
+                            raise ValueError("Invalid snack format.")
+                        if len(" ".join(data.get("steps", [])).split()) <= 50:
+                            break
+                        if attempt == 2:
+                            raise ValueError("Snack instructions exceeded 50 words.")
+                        prompt = snack_prompt + (
+                            f"\nRecipe data: {json.dumps(source)}" if source else ""
+                        ) + f"\nPrevious response: {json.dumps(data)}\nToo long, rewrite in 50 words max."
+                    recipe = gemini_recipe({**data, "cookTime": data.get("time")}, pantry, source, minimum_steps=1)
+                    if (
+                        recipe["readyInMinutes"] > 15 or len(recipe["ingredients"]) > 5
+                        or any(not ingredient["inFridge"] for ingredient in recipe["ingredients"])
+                    ):
+                        raise ValueError("Snack did not meet pantry, time, or ingredient limits.")
+                    return recipe
+                except (HTTPError, URLError, TimeoutError, ValueError, KeyError, IndexError, TypeError):
+                    if source and source["instructions"]:
+                        return {**source, "instructionsNote": "Gemini could not simplify this snack. Showing Spoonacular's original steps."}
+                    raise
+
+            if spoonacular_key:
+                with ThreadPoolExecutor(max_workers=3) as pool:
+                    details = list(pool.map(make_snack, sources))
+            else:
+                details = [make_snack()]
+        return [recipe for recipe in details if (
+            recipe["readyInMinutes"] <= 15 and recipe["instructions"]
+            and not re.search(r"dinner|lunch|main[\s-]+course", recipe["title"], re.I)
+            and (not gemini_key or (
+                len(recipe["ingredients"]) <= 5
+                and all(ingredient["inFridge"] for ingredient in recipe["ingredients"])
+            ))
+        )][:8]
+
     output_shape = (
         " Ingredients must include exact amounts; use objects with name, amount (number), unit, "
         "and original (amount plus ingredient). Steps must be an array of separate detailed strings."
@@ -804,6 +873,11 @@ def generate_recipes():
         return error_response("Add at least three ingredients and choose your preferences first.", 400)
 
     body = request.get_json(silent=True) or {}
+    if not isinstance(body, dict):
+        return error_response("Enter valid recipe options.", 400)
+    snack_mode = body.get("snackMode", False)
+    if not isinstance(snack_mode, bool):
+        return error_response("Choose Meals or Snacks.", 400)
     spoonacular_key = body.get("spoonacularApiKey", "")
     gemini_key = body.get("geminiApiKey", "")
     if not isinstance(spoonacular_key, str) or not isinstance(gemini_key, str):
@@ -814,14 +888,14 @@ def generate_recipes():
 
     try:
         search_key = "hybrid:" + hashlib.sha256(json.dumps(
-            [ingredients, preferences, spoonacular_key, gemini_key], sort_keys=True,
+            [ingredients, preferences, spoonacular_key, gemini_key, snack_mode], sort_keys=True,
         ).encode()).hexdigest()
         details = recipe_search_cache_get(search_key)
         if details is None:
-            details = hybrid_recipes(ingredients, preferences, spoonacular_key, gemini_key)
+            details = hybrid_recipes(ingredients, preferences, spoonacular_key, gemini_key, snack_mode)
             batch_id = os.urandom(10).hex()
             details = [
-                {**recipe, "id": f"generated-{batch_id}-{index}"}
+                {**recipe, "id": f"generated-{'snack-' if snack_mode else ''}{batch_id}-{index}"}
                 for index, recipe in enumerate(details)
             ]
             recipe_search_cache_set(search_key, details)

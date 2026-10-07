@@ -126,9 +126,14 @@ function updateCachedSession(queryClient: ReturnType<typeof useQueryClient>, val
   queryClient.setQueryData(getGetScrapCookSessionQueryKey(), value);
 }
 
-function Header() {
+function Header({ snackMode, onModeChange, onFindRecipes, disabled }: {
+  snackMode: boolean;
+  onModeChange: (snacks: boolean) => void;
+  onFindRecipes: () => void;
+  disabled: boolean;
+}) {
   return (
-    <header className="sc-header">
+    <header className="sc-header" style={{ flexWrap: "wrap", gap: 8 }}>
       <Link className="sc-brand" href="/" aria-label="ScrapCook home" data-testid="link-scrapcook-home">
         <span className="sc-brand-mark"><CookingPot size={19} strokeWidth={2.3} /></span>
         <span>scrap<span>cook</span></span>
@@ -137,7 +142,14 @@ function Header() {
         <Leaf size={15} />
         <span>Good food. Less waste.</span>
       </div>
-      <nav className="sc-header-links" aria-label="Your ScrapCook">
+      <nav className="sc-header-links" aria-label="Your ScrapCook" style={{ flexWrap: "wrap", justifyContent: "flex-end" }}>
+        <Link href="/" className="sc-nav-link" onClick={(event) => { if (disabled) event.preventDefault(); else onFindRecipes(); }}>Find Recipes</Link>
+        <div className="sc-savings-actions" role="group" aria-label="Recipe mode" style={{ width: "auto" }}>
+          <button type="button" className="sc-tool-button" aria-pressed={!snackMode} disabled={disabled} onClick={() => onModeChange(false)} data-testid="button-mode-meals"
+            style={!snackMode ? { background: "var(--sc-green)", borderColor: "var(--sc-green)", color: "white" } : undefined}>Meals</button>
+          <button type="button" className="sc-tool-button" aria-pressed={snackMode} disabled={disabled} onClick={() => onModeChange(true)} data-testid="button-mode-snacks"
+            style={snackMode ? { background: "var(--sc-green)", borderColor: "var(--sc-green)", color: "white" } : undefined}>{snackMode ? "Snack Mode On" : "Snacks"}</button>
+        </div>
         <Link href="/savings" className="sc-nav-link"><TrendingUp size={15} /> Savings</Link>
         <Link href="/settings" className="sc-nav-link">Settings</Link>
       </nav>
@@ -474,7 +486,7 @@ function PreferencesCard({
   );
 }
 
-function RecipeCard({ recipe, index }: { recipe: RecipeSummary; index: number }) {
+function RecipeCard({ recipe, index, snackMode }: { recipe: RecipeSummary; index: number; snackMode: boolean }) {
   const imageLabel = `Photo of ${recipe.title}`;
   return (
     <article className="sc-recipe-card" data-testid={`card-recipe-${recipe.id}`}>
@@ -494,6 +506,7 @@ function RecipeCard({ recipe, index }: { recipe: RecipeSummary; index: number })
           <span><Clock3 size={14} /> {recipe.readyInMinutes} min</span>
           <span className="sc-meta-divider" />
           <span>{recipe.difficulty}</span>
+          {snackMode && <span className="sc-count" data-testid={`tag-snack-${recipe.id}`}>15 min or less</span>}
         </div>
         <h3 data-testid={`text-recipe-title-${recipe.id}`}>{recipe.title}</h3>
         <p className={recipe.missingIngredients > 0 ? "sc-missing" : "sc-missing sc-all-have"} data-testid={`text-missing-${recipe.id}`}>
@@ -519,7 +532,7 @@ function RecipeCard({ recipe, index }: { recipe: RecipeSummary; index: number })
   );
 }
 
-async function generateRecipesWithSavedKeys(): Promise<RecipeResults> {
+async function generateRecipesWithSavedKeys(snackMode: boolean): Promise<RecipeResults> {
   let geminiApiKey = "";
   let spoonacularApiKey = "";
   try {
@@ -533,7 +546,7 @@ async function generateRecipesWithSavedKeys(): Promise<RecipeResults> {
     method: "POST",
     credentials: "same-origin",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ geminiApiKey, spoonacularApiKey }),
+    body: JSON.stringify({ geminiApiKey, spoonacularApiKey, snackMode }),
   });
   const result = await response.json();
   if (!response.ok) throw new Error(result.error ?? "Could not generate recipes. Check your API keys in Settings.");
@@ -550,6 +563,7 @@ export default function HomePage() {
   const [preferences, setPreferences] = useState<CookingPreferences>(defaultPreferences);
   const [hydrated, setHydrated] = useState(false);
   const [error, setError] = useState("");
+  const [snackMode, setSnackMode] = useState(false);
 
   useEffect(() => {
     const saved = sessionQuery.data;
@@ -593,7 +607,7 @@ export default function HomePage() {
       {
         onSuccess: (saved) => {
           updateCachedSession(queryClient, saved);
-          generateRecipes.mutate(undefined, {
+          generateRecipes.mutate(snackMode, {
             onSuccess: (result) => {
               const updated: ScrapCookSession = {
                 ...saved,
@@ -613,7 +627,7 @@ export default function HomePage() {
 
   const regenerate = () => {
     setError("");
-    generateRecipes.mutate(undefined, {
+    generateRecipes.mutate(snackMode, {
       onSuccess: (result) => {
         const current = queryClient.getQueryData<ScrapCookSession>(getGetScrapCookSessionQueryKey());
         if (current) updateCachedSession(queryClient, { ...current, recipes: result.recipes, demoMode: result.demoMode });
@@ -627,13 +641,25 @@ export default function HomePage() {
     setStep("ingredients");
   };
 
-  const recipes = sessionQuery.data?.recipes ?? [];
+  const recipes = (sessionQuery.data?.recipes ?? []).filter((recipe) =>
+    !snackMode || (recipe.readyInMinutes <= 15 && !/dinner|lunch|main[\s-]+course/i.test(recipe.title)),
+  );
   const loading = saveSession.isPending || generateRecipes.isPending;
+  const header = <Header
+    snackMode={snackMode}
+    disabled={loading || !hydrated}
+    onFindRecipes={() => { setError(""); setStep(ingredients.length >= 3 ? "preferences" : "ingredients"); }}
+    onModeChange={(next) => {
+      setSnackMode(next);
+      setError("");
+      if (step === "results" && next !== snackMode) setStep("preferences");
+    }}
+  />;
 
   if (sessionQuery.isError) {
     return (
       <div className="sc-app">
-        <Header />
+        {header}
         <main className="sc-page sc-loading-page">
           <h1>We couldn't reach the kitchen.</h1>
           <p>Refresh the page to start your recipe search.</p>
@@ -647,7 +673,7 @@ export default function HomePage() {
   if (sessionQuery.isLoading || !hydrated) {
     return (
       <div className="sc-app">
-        <Header />
+        {header}
         <main className="sc-page sc-loading-page">
           <div className="sc-loader-mark"><CookingPot size={22} /></div>
           <p>Getting your kitchen ready…</p>
@@ -659,7 +685,7 @@ export default function HomePage() {
 
   return (
     <div className="sc-app">
-      <Header />
+      {header}
       <main className="sc-page">
         <Stepper step={step} />
         {step === "ingredients" && (
@@ -780,7 +806,7 @@ export default function HomePage() {
               </div>
             ) : recipes.length > 0 ? (
               <div className="sc-recipe-grid">
-                {recipes.map((recipe, index) => <RecipeCard recipe={recipe} index={index} key={recipe.id} />)}
+                {recipes.map((recipe, index) => <RecipeCard recipe={recipe} index={index} snackMode={snackMode || recipe.id.startsWith("generated-snack-")} key={recipe.id} />)}
               </div>
             ) : (
               <div className="sc-empty-results">

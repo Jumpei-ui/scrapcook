@@ -14,3 +14,9 @@ Use the user's provider keys for this flow, not a silently substituted Replit-ma
 **Why:** The user requested key inputs saved in localStorage and also asked that credentials never be logged.
 
 **How to apply:** Never log credentials or provider errors that can contain them. Replacing browser-local persistence with safer server-side storage is a separate change requiring the user's approval.
+
+Snack Mode is an opt-in addition to the existing finder, not a separate page or app. Meals remains the default; Gemini snacks should be simple pantry-only options requiring no cooking skills.
+
+**Why:** The user explicitly requested minimal changes, no new pages, and a simple snack alternative while keeping everything else the same.
+
+**How to apply:** Keep Snack Mode work within the existing finder and recipe-generation service; preserve the Meals flow and unrelated pages.
