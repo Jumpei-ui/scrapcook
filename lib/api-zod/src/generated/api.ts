@@ -22,7 +22,6 @@ export const HealthCheckResponse = zod.object({
  */
 
 
-
 export const GetScrapCookSessionResponse = zod.object({
   "ingredients": zod.array(zod.string()),
   "preferences": zod.union([zod.object({
@@ -61,8 +60,6 @@ export const updateScrapCookSessionBodyIngredientsMin = 3;
 export const updateScrapCookSessionBodyIngredientsMax = 40;
 
 
-
-
 export const UpdateScrapCookSessionBody = zod.object({
   "ingredients": zod.array(zod.string().min(1)).min(updateScrapCookSessionBodyIngredientsMin).max(updateScrapCookSessionBodyIngredientsMax),
   "preferences": zod.union([zod.object({
@@ -73,8 +70,6 @@ export const UpdateScrapCookSessionBody = zod.object({
   "diet": zod.enum(['none', 'vegetarian', 'vegan', 'pescetarian', 'glutenFree', 'ketogenic', 'paleo'])
 }),zod.null()])
 })
-
-
 
 
 export const UpdateScrapCookSessionResponse = zod.object({
@@ -108,6 +103,12 @@ export const UpdateScrapCookSessionResponse = zod.object({
 
 
 /**
+ * Both this endpoint and the legacy POST /scrapcook/recipes alias enforce
+ * 20 requests per IP per rolling hour and an owner-configured global daily
+ * generation cap. Daily usage is shared across instances and resets at
+ * midnight UTC. Admitted generation attempts count even if a provider fails.
+ * Missing or invalid daily-limit configuration and unavailable limit storage
+ * block generation before any paid provider calls.
  * @summary Find up to 50 recipes using ingredients and cooking preferences
  */
 export const generateScrapCookRecipesBodyIngredientsItemMax = 60;
@@ -134,7 +135,6 @@ export const GenerateScrapCookRecipesBody = zod.object({
 
 export const generateScrapCookRecipesResponseRecipesMin = 0;
 export const generateScrapCookRecipesResponseRecipesMax = 50;
-
 
 
 export const GenerateScrapCookRecipesResponse = zod.object({
@@ -188,7 +188,6 @@ export const generateScrapCookRecipesAliasResponseRecipesMin = 0;
 export const generateScrapCookRecipesAliasResponseRecipesMax = 50;
 
 
-
 export const GenerateScrapCookRecipesAliasResponse = zod.object({
   "recipes": zod.array(zod.object({
   "id": zod.string(),
@@ -227,7 +226,6 @@ export const LoginPrivateRecipeAdminResponse = zod.void()
 export const getPrivateRecipeUsageResponseRecentRequestsMax = 20;
 
 
-
 export const GetPrivateRecipeUsageResponse = zod.object({
   "date": zod.string(),
   "spoon": zod.number().int(),
@@ -252,7 +250,6 @@ export const ResetPrivateRecipeUsageHeader = zod.object({
 })
 
 export const resetPrivateRecipeUsageResponseRecentRequestsMax = 20;
-
 
 
 export const ResetPrivateRecipeUsageResponse = zod.object({
@@ -344,7 +341,6 @@ export const getScrapCookSavingsDashboardResponseDailySavingsMax = 7;
 export const getScrapCookSavingsDashboardResponseDefaultComparisonCostMin = 0;
 
 
-
 export const GetScrapCookSavingsDashboardResponse = zod.object({
   "todaySavings": zod.number(),
   "weekSavings": zod.number(),
@@ -376,13 +372,11 @@ export const GetScrapCookSavingsDashboardResponse = zod.object({
 export const estimateScrapCookRecipeCostBodyRecipeIdMax = 100;
 
 
-
 export const EstimateScrapCookRecipeCostBody = zod.object({
   "recipeId": zod.string().min(1).max(estimateScrapCookRecipeCostBodyRecipeIdMax)
 })
 
 export const estimateScrapCookRecipeCostResponseEstimatedCostPerServeMin = 0;
-
 
 
 export const EstimateScrapCookRecipeCostResponse = zod.object({
@@ -400,7 +394,6 @@ export const createScrapCookMealBodyRecipeNameMax = 200;
 export const createScrapCookMealBodyActualCostMin = 0;
 
 export const createScrapCookMealBodyComparedToCostMin = 0;
-
 
 
 export const CreateScrapCookMealBody = zod.object({
@@ -427,7 +420,6 @@ export const CreateScrapCookMealResponse = zod.object({
 export const updateScrapCookSavingsSettingsBodyCostMin = 0;
 
 
-
 export const UpdateScrapCookSavingsSettingsBody = zod.object({
   "label": zod.enum(['Takeaway', 'Uber Eats', 'HelloFresh', 'Woolies new shop']),
   "cost": zod.number().min(updateScrapCookSavingsSettingsBodyCostMin)
@@ -436,10 +428,8 @@ export const UpdateScrapCookSavingsSettingsBody = zod.object({
 export const updateScrapCookSavingsSettingsResponseCostMin = 0;
 
 
-
 export const UpdateScrapCookSavingsSettingsResponse = zod.object({
   "label": zod.enum(['Takeaway', 'Uber Eats', 'HelloFresh', 'Woolies new shop']),
   "cost": zod.number().min(updateScrapCookSavingsSettingsResponseCostMin)
 })
-
 

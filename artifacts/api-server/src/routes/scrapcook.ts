@@ -35,10 +35,10 @@ function relayPythonResponse(res: Response, upstream: globalThis.Response, body:
   for (const cookie of upstream.headers.getSetCookie()) res.append("set-cookie", cookie);
   res.status(upstream.status).send(body);
 }
-
 router.use("/scrapcook/savings", savingsRouter);
 
-// Keep the old generation URL behind the same limiter; it must not be a bypass.
+// All generation URLs reserve the same daily allowance and enforce the per-IP
+// limit before recording usage or forwarding to Python for paid provider calls.
 router.post(["/recipes", "/getRecipes", "/scrapcook/recipes"], recipeRateLimit, async (req, res) => {
   try {
     await recordRecipeRequest(req.ip!);

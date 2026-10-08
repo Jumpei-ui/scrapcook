@@ -62,6 +62,13 @@ paths:
       operationId: generateScrapCookRecipes
       tags: [scrapcook]
       summary: Find up to 50 recipes using ingredients and cooking preferences
+      description: |
+        Both this endpoint and the legacy POST /scrapcook/recipes alias enforce
+        20 requests per IP per rolling hour and an owner-configured global daily
+        generation cap. Daily usage is shared across instances and resets at
+        midnight UTC. Admitted generation attempts count even if a provider fails.
+        Missing or invalid daily-limit configuration and unavailable limit storage
+        block generation before any paid provider calls.
       requestBody:
         required: true
         content:
@@ -88,9 +95,19 @@ paths:
               schema:
                 $ref: "#/components/schemas/ApiError"
         "429":
-          description: More than 20 recipe requests from this IP in the past hour
+          description: Per-IP hourly allowance or shared daily generation cap reached
           headers:
             Retry-After:
+              description: Seconds until the hourly allowance frees up or the next midnight UTC for a daily cap
+              schema:
+                type: integer
+                minimum: 1
+            Recipe-Daily-Limit:
+              description: Owner-configured daily cap, present when the daily limiter is reached
+              schema:
+                type: integer
+            Recipe-Daily-Remaining:
+              description: Remaining daily attempts, zero when the daily cap is reached
               schema:
                 type: integer
           content:
@@ -98,7 +115,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/ApiError"
         "503":
-          description: Recipe service unavailable or server secrets not configured
+          description: Recipe service or limit storage unavailable, or server configuration missing or invalid
           content:
             application/json:
               schema:
@@ -727,4 +744,3 @@ components:
         error:
           type: string
       required: [error]
-

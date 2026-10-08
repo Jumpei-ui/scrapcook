@@ -10,6 +10,7 @@ _Replace the heading above with the project's name, and this line with one sente
 - `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from the OpenAPI spec
 - `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
 - Required env: `DATABASE_URL` — Postgres connection string
+- `RECIPE_DAILY_LIMIT` — required server-only non-negative integer (maximum 2147483647). Initial allowance: 100 generation attempts per UTC day across all clients and instances. Set to `0` to pause generation; missing/invalid values block generation. Restart the API after changing it. Both recipe POST URLs count attempts before provider calls; failed attempts are not refunded. A daily-cap response is HTTP 429 with `Retry-After` until midnight UTC. Database failures block generation with HTTP 503.
 
 ## Stack
 

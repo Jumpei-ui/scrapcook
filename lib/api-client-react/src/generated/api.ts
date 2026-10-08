@@ -51,7 +51,6 @@ type AwaitedInput<T> = PromiseLike<T> | T;
 type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
 
 
-
 const withQueryKey = <T extends object, K>(query: T, queryKey: K): T & { queryKey: K } => {
   const result = { queryKey } as T & { queryKey: K };
   for (const key of Object.keys(query)) {
@@ -68,8 +67,6 @@ const withQueryKey = <T extends object, K>(query: T, queryKey: K): T & { queryKe
 };
 
 export const getHealthCheckUrl = () => {
-
-
 
 
   return `/api/healthz`
@@ -91,9 +88,6 @@ export const healthCheck = async ( options?: Parameters<typeof customFetch>[1]):
 );}
 
 
-
-
-
 export const getHealthCheckQueryKey = () => {
     return [
     `/api/healthz`
@@ -109,11 +103,7 @@ const {query: queryOptions, request: requestOptions} = options ?? {};
   const queryKey =  queryOptions?.queryKey ?? getHealthCheckQueryKey();
 
 
-
     const queryFn: QueryFunction<Awaited<ReturnType<typeof healthCheck>>> = ({ signal }) => healthCheck({ signal, ...requestOptions });
-
-
-
 
 
    return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof healthCheck>>, TError, TData> & { queryKey: QueryKey }
@@ -140,14 +130,7 @@ export function useHealthCheck<TData = Awaited<ReturnType<typeof healthCheck>>, 
 }
 
 
-
-
-
-
-
 export const getGetScrapCookSessionUrl = () => {
-
-
 
 
   return `/api/scrapcook/session`
@@ -168,9 +151,6 @@ export const getScrapCookSession = async ( options?: Parameters<typeof customFet
 );}
 
 
-
-
-
 export const getGetScrapCookSessionQueryKey = () => {
     return [
     `/api/scrapcook/session`
@@ -186,11 +166,7 @@ const {query: queryOptions, request: requestOptions} = options ?? {};
   const queryKey =  queryOptions?.queryKey ?? getGetScrapCookSessionQueryKey();
 
 
-
     const queryFn: QueryFunction<Awaited<ReturnType<typeof getScrapCookSession>>> = ({ signal }) => getScrapCookSession({ signal, ...requestOptions });
-
-
-
 
 
    return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getScrapCookSession>>, TError, TData> & { queryKey: QueryKey }
@@ -217,14 +193,7 @@ export function useGetScrapCookSession<TData = Awaited<ReturnType<typeof getScra
 }
 
 
-
-
-
-
-
 export const getUpdateScrapCookSessionUrl = () => {
-
-
 
 
   return `/api/scrapcook/session`
@@ -259,9 +228,6 @@ return customFetch<ScrapCookSession>(getUpdateScrapCookSessionUrl(),
 );}
 
 
-
-
-
 export const getUpdateScrapCookSessionMutationKey = () => ['updateScrapCookSession'] as const;
 
 export const getUpdateScrapCookSessionMutationOptions = <TError = ErrorType<unknown>,
@@ -276,17 +242,11 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
       : {mutation: { mutationKey, }, request: undefined};
 
 
-
-
       const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateScrapCookSession>>, UpdateScrapCookSessionMutationVariables> = (props) => {
           const {data} = props ?? {};
 
           return  updateScrapCookSession(data,requestOptions)
         }
-
-
-
-
 
 
   return  { mutationFn, ...mutationOptions }}
@@ -313,12 +273,16 @@ export const useUpdateScrapCookSession = <TError = ErrorType<unknown>,
 export const getGenerateScrapCookRecipesUrl = () => {
 
 
-
-
   return `/api/recipes`
 }
 
 /**
+ * Both this endpoint and the legacy POST /scrapcook/recipes alias enforce
+ * 20 requests per IP per rolling hour and an owner-configured global daily
+ * generation cap. Daily usage is shared across instances and resets at
+ * midnight UTC. Admitted generation attempts count even if a provider fails.
+ * Missing or invalid daily-limit configuration and unavailable limit storage
+ * block generation before any paid provider calls.
  * @summary Find up to 50 recipes using ingredients and cooking preferences
  */
 export const generateScrapCookRecipes = async (recipeGenerationInput: RecipeGenerationInput, options?: Parameters<typeof customFetch>[1]): Promise<RecipeResults> => {
@@ -347,9 +311,6 @@ return customFetch<RecipeResults>(getGenerateScrapCookRecipesUrl(),
 );}
 
 
-
-
-
 export const getGenerateScrapCookRecipesMutationKey = () => ['generateScrapCookRecipes'] as const;
 
 export const getGenerateScrapCookRecipesMutationOptions = <TError = ErrorType<ApiError>,
@@ -364,17 +325,11 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
       : {mutation: { mutationKey, }, request: undefined};
 
 
-
-
       const mutationFn: MutationFunction<Awaited<ReturnType<typeof generateScrapCookRecipes>>, GenerateScrapCookRecipesMutationVariables> = (props) => {
           const {data} = props ?? {};
 
           return  generateScrapCookRecipes(data,requestOptions)
         }
-
-
-
-
 
 
   return  { mutationFn, ...mutationOptions }}
@@ -399,8 +354,6 @@ export const useGenerateScrapCookRecipes = <TError = ErrorType<ApiError>,
     }
 
 export const getGenerateScrapCookRecipesAliasUrl = () => {
-
-
 
 
   return `/api/getRecipes`
@@ -435,9 +388,6 @@ return customFetch<RecipeResults>(getGenerateScrapCookRecipesAliasUrl(),
 );}
 
 
-
-
-
 export const getGenerateScrapCookRecipesAliasMutationKey = () => ['generateScrapCookRecipesAlias'] as const;
 
 export const getGenerateScrapCookRecipesAliasMutationOptions = <TError = ErrorType<void>,
@@ -452,17 +402,11 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
       : {mutation: { mutationKey, }, request: undefined};
 
 
-
-
       const mutationFn: MutationFunction<Awaited<ReturnType<typeof generateScrapCookRecipesAlias>>, GenerateScrapCookRecipesAliasMutationVariables> = (props) => {
           const {data} = props ?? {};
 
           return  generateScrapCookRecipesAlias(data,requestOptions)
         }
-
-
-
-
 
 
   return  { mutationFn, ...mutationOptions }}
@@ -487,8 +431,6 @@ export const useGenerateScrapCookRecipesAlias = <TError = ErrorType<void>,
     }
 
 export const getLoginPrivateRecipeAdminUrl = () => {
-
-
 
 
   return `/api/admin/login`
@@ -523,9 +465,6 @@ return customFetch<void>(getLoginPrivateRecipeAdminUrl(),
 );}
 
 
-
-
-
 export const getLoginPrivateRecipeAdminMutationKey = () => ['loginPrivateRecipeAdmin'] as const;
 
 export const getLoginPrivateRecipeAdminMutationOptions = <TError = ErrorType<void>,
@@ -540,17 +479,11 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
       : {mutation: { mutationKey, }, request: undefined};
 
 
-
-
       const mutationFn: MutationFunction<Awaited<ReturnType<typeof loginPrivateRecipeAdmin>>, LoginPrivateRecipeAdminMutationVariables> = (props) => {
           const {data} = props ?? {};
 
           return  loginPrivateRecipeAdmin(data,requestOptions)
         }
-
-
-
-
 
 
   return  { mutationFn, ...mutationOptions }}
@@ -577,8 +510,6 @@ export const useLoginPrivateRecipeAdmin = <TError = ErrorType<void>,
 export const getGetPrivateRecipeUsageUrl = () => {
 
 
-
-
   return `/api/admin/usage`
 }
 
@@ -597,9 +528,6 @@ export const getPrivateRecipeUsage = async ( options?: Parameters<typeof customF
 );}
 
 
-
-
-
 export const getGetPrivateRecipeUsageQueryKey = () => {
     return [
     `/api/admin/usage`
@@ -615,11 +543,7 @@ const {query: queryOptions, request: requestOptions} = options ?? {};
   const queryKey =  queryOptions?.queryKey ?? getGetPrivateRecipeUsageQueryKey();
 
 
-
     const queryFn: QueryFunction<Awaited<ReturnType<typeof getPrivateRecipeUsage>>> = ({ signal }) => getPrivateRecipeUsage({ signal, ...requestOptions });
-
-
-
 
 
    return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getPrivateRecipeUsage>>, TError, TData> & { queryKey: QueryKey }
@@ -646,14 +570,7 @@ export function useGetPrivateRecipeUsage<TData = Awaited<ReturnType<typeof getPr
 }
 
 
-
-
-
-
-
 export const getResetPrivateRecipeUsageUrl = () => {
-
-
 
 
   return `/api/admin/reset`
@@ -674,9 +591,6 @@ export const resetPrivateRecipeUsage = async ( options?: Parameters<typeof custo
 );}
 
 
-
-
-
 export const getResetPrivateRecipeUsageMutationKey = () => ['resetPrivateRecipeUsage'] as const;
 
 export const getResetPrivateRecipeUsageMutationOptions = <TError = ErrorType<void>,
@@ -691,17 +605,11 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
       : {mutation: { mutationKey, }, request: undefined};
 
 
-
-
       const mutationFn: MutationFunction<Awaited<ReturnType<typeof resetPrivateRecipeUsage>>, void> = () => {
 
 
           return  resetPrivateRecipeUsage(requestOptions)
         }
-
-
-
-
 
 
   return  { mutationFn, ...mutationOptions }}
@@ -726,8 +634,6 @@ export const useResetPrivateRecipeUsage = <TError = ErrorType<void>,
     }
 
 export const getRecordInternalProviderUsageUrl = () => {
-
-
 
 
   return `/api/internal/provider-usage`
@@ -762,9 +668,6 @@ return customFetch<void>(getRecordInternalProviderUsageUrl(),
 );}
 
 
-
-
-
 export const getRecordInternalProviderUsageMutationKey = () => ['recordInternalProviderUsage'] as const;
 
 export const getRecordInternalProviderUsageMutationOptions = <TError = ErrorType<void>,
@@ -779,17 +682,11 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
       : {mutation: { mutationKey, }, request: undefined};
 
 
-
-
       const mutationFn: MutationFunction<Awaited<ReturnType<typeof recordInternalProviderUsage>>, RecordInternalProviderUsageMutationVariables> = (props) => {
           const {data} = props ?? {};
 
           return  recordInternalProviderUsage(data,requestOptions)
         }
-
-
-
-
 
 
   return  { mutationFn, ...mutationOptions }}
@@ -816,8 +713,6 @@ export const useRecordInternalProviderUsage = <TError = ErrorType<void>,
 export const getGetScrapCookRecipeUrl = (recipeId: string,) => {
 
 
-
-
   return `/api/scrapcook/recipes/${recipeId}`
 }
 
@@ -836,9 +731,6 @@ export const getScrapCookRecipe = async (recipeId: string, options?: Parameters<
 );}
 
 
-
-
-
 export const getGetScrapCookRecipeQueryKey = (recipeId: string,) => {
     return [
     `/api/scrapcook/recipes/${recipeId}`
@@ -854,11 +746,7 @@ const {query: queryOptions, request: requestOptions} = options ?? {};
   const queryKey =  queryOptions?.queryKey ?? getGetScrapCookRecipeQueryKey(recipeId);
 
 
-
     const queryFn: QueryFunction<Awaited<ReturnType<typeof getScrapCookRecipe>>> = ({ signal }) => getScrapCookRecipe(recipeId, { signal, ...requestOptions });
-
-
-
 
 
    return  { queryKey, queryFn, enabled: recipeId !== null && recipeId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getScrapCookRecipe>>, TError, TData> & { queryKey: QueryKey }
@@ -885,14 +773,7 @@ export function useGetScrapCookRecipe<TData = Awaited<ReturnType<typeof getScrap
 }
 
 
-
-
-
-
-
 export const getMarkScrapCookRecipeMadeUrl = (recipeId: string,) => {
-
-
 
 
   return `/api/scrapcook/recipes/${recipeId}/made`
@@ -913,9 +794,6 @@ export const markScrapCookRecipeMade = async (recipeId: string, options?: Parame
 );}
 
 
-
-
-
 export const getMarkScrapCookRecipeMadeMutationKey = () => ['markScrapCookRecipeMade'] as const;
 
 export const getMarkScrapCookRecipeMadeMutationOptions = <TError = ErrorType<ApiError>,
@@ -930,17 +808,11 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
       : {mutation: { mutationKey, }, request: undefined};
 
 
-
-
       const mutationFn: MutationFunction<Awaited<ReturnType<typeof markScrapCookRecipeMade>>, MarkScrapCookRecipeMadeMutationVariables> = (props) => {
           const {recipeId} = props ?? {};
 
           return  markScrapCookRecipeMade(recipeId,requestOptions)
         }
-
-
-
-
 
 
   return  { mutationFn, ...mutationOptions }}
@@ -967,8 +839,6 @@ export const useMarkScrapCookRecipeMade = <TError = ErrorType<ApiError>,
 export const getGetScrapCookSavingsDashboardUrl = () => {
 
 
-
-
   return `/api/scrapcook/savings/dashboard`
 }
 
@@ -987,9 +857,6 @@ export const getScrapCookSavingsDashboard = async ( options?: Parameters<typeof 
 );}
 
 
-
-
-
 export const getGetScrapCookSavingsDashboardQueryKey = () => {
     return [
     `/api/scrapcook/savings/dashboard`
@@ -1005,11 +872,7 @@ const {query: queryOptions, request: requestOptions} = options ?? {};
   const queryKey =  queryOptions?.queryKey ?? getGetScrapCookSavingsDashboardQueryKey();
 
 
-
     const queryFn: QueryFunction<Awaited<ReturnType<typeof getScrapCookSavingsDashboard>>> = ({ signal }) => getScrapCookSavingsDashboard({ signal, ...requestOptions });
-
-
-
 
 
    return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getScrapCookSavingsDashboard>>, TError, TData> & { queryKey: QueryKey }
@@ -1036,14 +899,7 @@ export function useGetScrapCookSavingsDashboard<TData = Awaited<ReturnType<typeo
 }
 
 
-
-
-
-
-
 export const getEstimateScrapCookRecipeCostUrl = () => {
-
-
 
 
   return `/api/scrapcook/savings/estimate`
@@ -1078,9 +934,6 @@ return customFetch<RecipeCostEstimate>(getEstimateScrapCookRecipeCostUrl(),
 );}
 
 
-
-
-
 export const getEstimateScrapCookRecipeCostMutationKey = () => ['estimateScrapCookRecipeCost'] as const;
 
 export const getEstimateScrapCookRecipeCostMutationOptions = <TError = ErrorType<ApiError>,
@@ -1095,17 +948,11 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
       : {mutation: { mutationKey, }, request: undefined};
 
 
-
-
       const mutationFn: MutationFunction<Awaited<ReturnType<typeof estimateScrapCookRecipeCost>>, EstimateScrapCookRecipeCostMutationVariables> = (props) => {
           const {data} = props ?? {};
 
           return  estimateScrapCookRecipeCost(data,requestOptions)
         }
-
-
-
-
 
 
   return  { mutationFn, ...mutationOptions }}
@@ -1130,8 +977,6 @@ export const useEstimateScrapCookRecipeCost = <TError = ErrorType<ApiError>,
     }
 
 export const getCreateScrapCookMealUrl = () => {
-
-
 
 
   return `/api/scrapcook/savings/meals`
@@ -1166,9 +1011,6 @@ return customFetch<CookedMeal>(getCreateScrapCookMealUrl(),
 );}
 
 
-
-
-
 export const getCreateScrapCookMealMutationKey = () => ['createScrapCookMeal'] as const;
 
 export const getCreateScrapCookMealMutationOptions = <TError = ErrorType<ApiError>,
@@ -1183,17 +1025,11 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
       : {mutation: { mutationKey, }, request: undefined};
 
 
-
-
       const mutationFn: MutationFunction<Awaited<ReturnType<typeof createScrapCookMeal>>, CreateScrapCookMealMutationVariables> = (props) => {
           const {data} = props ?? {};
 
           return  createScrapCookMeal(data,requestOptions)
         }
-
-
-
-
 
 
   return  { mutationFn, ...mutationOptions }}
@@ -1218,8 +1054,6 @@ export const useCreateScrapCookMeal = <TError = ErrorType<ApiError>,
     }
 
 export const getUpdateScrapCookSavingsSettingsUrl = () => {
-
-
 
 
   return `/api/scrapcook/savings/settings`
@@ -1254,9 +1088,6 @@ return customFetch<SavingsComparison>(getUpdateScrapCookSavingsSettingsUrl(),
 );}
 
 
-
-
-
 export const getUpdateScrapCookSavingsSettingsMutationKey = () => ['updateScrapCookSavingsSettings'] as const;
 
 export const getUpdateScrapCookSavingsSettingsMutationOptions = <TError = ErrorType<ApiError>,
@@ -1271,17 +1102,11 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
       : {mutation: { mutationKey, }, request: undefined};
 
 
-
-
       const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateScrapCookSavingsSettings>>, UpdateScrapCookSavingsSettingsMutationVariables> = (props) => {
           const {data} = props ?? {};
 
           return  updateScrapCookSavingsSettings(data,requestOptions)
         }
-
-
-
-
 
 
   return  { mutationFn, ...mutationOptions }}
@@ -1304,4 +1129,3 @@ export const useUpdateScrapCookSavingsSettings = <TError = ErrorType<ApiError>,
       > => {
       return useMutation(getUpdateScrapCookSavingsSettingsMutationOptions(options));
     }
-

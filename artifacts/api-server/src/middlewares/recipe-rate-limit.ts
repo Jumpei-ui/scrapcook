@@ -12,6 +12,10 @@ async function ensureStore() {
       client_hash text PRIMARY KEY,
       request_times timestamptz[] NOT NULL,
       updated_at timestamptz NOT NULL DEFAULT now()
+    );
+    CREATE TABLE IF NOT EXISTS recipe_daily_usage (
+      usage_day date PRIMARY KEY,
+      used integer NOT NULL CHECK (used >= 0)
     )
   `).catch((error: unknown) => {
     ready = undefined;
@@ -26,6 +30,15 @@ async function ensureStore() {
 
 export const recipeRateLimit: RequestHandler = async (req, res, next) => {
   try {
+    const configuredLimit = process.env.RECIPE_DAILY_LIMIT;
+    // Missing or malformed owner configuration must never silently disable the cap.
+    if (!configuredLimit || !/^\d+$/.test(configuredLimit)) {
+      throw new Error("Daily recipe limit is not configured.");
+    }
+    const dailyLimit = Number(configuredLimit);
+    if (!Number.isSafeInteger(dailyLimit) || dailyLimit > 2_147_483_647) {
+      throw new Error("Daily recipe limit is invalid.");
+    }
     const secret = process.env.SESSION_SECRET;
     if (!secret || !req.ip) throw new Error("Rate limit identity is unavailable.");
     const clientHash = createHmac("sha256", secret).update(req.ip).digest("hex");
@@ -61,9 +74,42 @@ export const recipeRateLimit: RequestHandler = async (req, res, next) => {
       return;
     }
     res.setHeader("RateLimit-Remaining", String(limit - result.rows[0].used));
+
+    // Reserve one generation attempt before any provider calls. ON CONFLICT locks
+    // today's row, so concurrent requests and replicas cannot exceed the allowance.
+    // Do not refund failures: a failed generation may already have consumed credits.
+    const daily = await pool.query<{ used: number | null; seconds: number }>(`
+      WITH today AS (
+        SELECT (statement_timestamp() AT TIME ZONE 'UTC')::date AS day
+      ), reservation AS (
+        INSERT INTO recipe_daily_usage (usage_day, used)
+        SELECT day, 1 FROM today WHERE $1::integer > 0
+        ON CONFLICT (usage_day) DO UPDATE SET used = recipe_daily_usage.used + 1
+        WHERE recipe_daily_usage.used < $1::integer
+        RETURNING used
+      )
+      SELECT (SELECT used FROM reservation) AS used,
+        GREATEST(1, CEIL(EXTRACT(EPOCH FROM (
+          ((day + 1)::timestamp AT TIME ZONE 'UTC') - statement_timestamp()
+        ))))::integer AS seconds
+      FROM today
+    `, [dailyLimit]);
+    const usage = daily.rows[0];
+    if (!usage) throw new Error("Daily recipe counter is unavailable.");
+    res.setHeader("Recipe-Daily-Limit", String(dailyLimit));
+    res.setHeader("Recipe-Daily-Remaining", String(
+      usage.used === null ? 0 : Math.max(0, dailyLimit - usage.used),
+    ));
+    if (usage.used === null) {
+      res.setHeader("Retry-After", String(usage.seconds));
+      res.status(429).json({
+        error: "The daily recipe generation limit has been reached. Please try again after midnight UTC.",
+      });
+      return;
+    }
     next();
   } catch {
-    req.log.error("Recipe rate-limit storage is unavailable; generation blocked.");
+    req.log.error("Recipe rate-limit storage or configuration is unavailable; generation blocked.");
     res.status(503).json({ error: "Recipe service is temporarily unavailable. Please try again later." });
   }
 };
