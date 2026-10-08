@@ -31,23 +31,6 @@ export default function SettingsPage() {
   const [label, setLabel] = useState<SavingsComparisonLabel>("Takeaway");
   const [cost, setCost] = useState("18.50");
   const [saved, setSaved] = useState(false);
-  const [geminiKey, setGeminiKey] = useState(() => {
-    try { return localStorage.getItem("gemini_api_key") ?? ""; } catch { return ""; }
-  });
-  const [spoonacularKey, setSpoonacularKey] = useState(() => {
-    try { return localStorage.getItem("spoonacular_api_key") ?? ""; } catch { return ""; }
-  });
-
-  const saveApiKeys = (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    try {
-      localStorage.setItem("gemini_api_key", geminiKey);
-      localStorage.setItem("spoonacular_api_key", spoonacularKey);
-      window.alert("Keys saved");
-    } catch {
-      toast({ title: "Could not save API keys", description: "Browser storage is unavailable.", variant: "destructive" });
-    }
-  };
 
   useEffect(() => {
     if (!dashboard.data?.defaultComparison) return;
@@ -143,20 +126,6 @@ export default function SettingsPage() {
             Comparison costs are your own estimate of a typical alternative. When you log a meal, you can adjust its comparison without changing this default.
           </aside>
         </div>
-        <section className="sc-panel">
-          <div className="sc-panel-heading"><div><h2>Recipe API keys</h2><p>Saved in this browser and used only for recipe requests. Browser storage is not a secure vault.</p></div></div>
-          <form className="sc-settings-form" onSubmit={saveApiKeys}>
-            <label className="sc-field" htmlFor="gemini-key">
-              Gemini API Key
-              <input id="gemini-key" type="password" autoComplete="off" spellCheck={false} value={geminiKey} onChange={(event) => setGeminiKey(event.target.value)} data-testid="input-gemini-api-key" />
-            </label>
-            <label className="sc-field" htmlFor="spoonacular-key">
-              Spoonacular API Key
-              <input id="spoonacular-key" type="password" autoComplete="off" spellCheck={false} value={spoonacularKey} onChange={(event) => setSpoonacularKey(event.target.value)} data-testid="input-spoonacular-api-key" />
-            </label>
-            <button className="sc-button sc-button-primary" type="submit" data-testid="button-save-api-keys"><Check size={16} /> Save API keys</button>
-          </form>
-        </section>
         <footer className="sc-footer" style={{ marginTop: 34 }}>
           <span>ScrapCook keeps your cooking journey in this browser.</span><span className="sc-footer-dot">·</span>
           <Link href="/savings">Back to savings</Link>

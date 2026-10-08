@@ -478,24 +478,15 @@ function RecipeCard({ recipe, index, snackMode, showNutrition }: { recipe: Recip
   );
 }
 
-async function generateRecipesWithSavedKeys(snackMode: boolean, showNutrition: boolean): Promise<RecipeResults> {
-  let geminiApiKey = "";
-  let spoonacularApiKey = "";
-  try {
-    geminiApiKey = localStorage.getItem("gemini_api_key")?.trim() ?? "";
-    spoonacularApiKey = localStorage.getItem("spoonacular_api_key")?.trim() ?? "";
-  } catch {
-    throw new Error("Browser storage is unavailable. Enable it to use API keys in Settings.");
-  }
-  if (!geminiApiKey && !spoonacularApiKey) throw new Error("Add API keys in Settings");
-  const response = await fetch("/api/scrapcook/recipes", {
+async function requestRecipes(ingredients: string[], preferences: CookingPreferences, snackMode: boolean, showNutrition: boolean): Promise<RecipeResults> {
+  const response = await fetch("/api/recipes", {
     method: "POST",
     credentials: "same-origin",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ geminiApiKey, spoonacularApiKey, snackMode, showNutrition }),
+    body: JSON.stringify({ ingredients, preferences, snackMode, showNutrition }),
   });
   const result = await response.json();
-  if (!response.ok) throw new Error(result.error ?? "Could not generate recipes. Check your API keys in Settings.");
+  if (!response.ok) throw new Error(result.error ?? "Could not generate recipes. Please try again.");
   return result as RecipeResults;
 }
 
@@ -506,7 +497,7 @@ export default function HomePage() {
     request: { headers: { "X-Show-Nutrition": String(showNutrition) } },
   });
   const saveSession = useUpdateScrapCookSession();
-  const generateRecipes = useMutation({ mutationFn: (snacks: boolean) => generateRecipesWithSavedKeys(snacks, showNutrition) });
+  const generateRecipes = useMutation({ mutationFn: (snacks: boolean) => requestRecipes(ingredients, preferences, snacks, showNutrition) });
   const [step, setStep] = useState<FlowStep>("ingredients");
   const [ingredients, setIngredients] = useState<string[]>([]);
   const [preferences, setPreferences] = useState<CookingPreferences>(defaultPreferences);

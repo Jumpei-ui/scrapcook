@@ -110,12 +110,24 @@ export const UpdateScrapCookSessionResponse = zod.object({
 /**
  * @summary Find up to 50 recipes using ingredients and cooking preferences
  */
+export const generateScrapCookRecipesBodyIngredientsItemMax = 60;
+
+export const generateScrapCookRecipesBodyIngredientsMin = 3;
+export const generateScrapCookRecipesBodyIngredientsMax = 40;
+
+
 export const generateScrapCookRecipesBodySnackModeDefault = false;
 export const generateScrapCookRecipesBodyShowNutritionDefault = true;
 
 export const GenerateScrapCookRecipesBody = zod.object({
-  "geminiApiKey": zod.string().optional(),
-  "spoonacularApiKey": zod.string().optional(),
+  "ingredients": zod.array(zod.string().max(generateScrapCookRecipesBodyIngredientsItemMax)).min(generateScrapCookRecipesBodyIngredientsMin).max(generateScrapCookRecipesBodyIngredientsMax),
+  "preferences": zod.object({
+  "experience": zod.enum(['beginner', 'intermediate', 'pro']),
+  "timeAvailable": zod.enum(['under15', '15to30', '30to60', 'noLimit']),
+  "equipment": zod.array(zod.enum(['stove', 'oven', 'microwave', 'airFryer', 'coldMeals'])).min(1),
+  "maxReadyTime": zod.union([zod.literal(0),zod.literal(15),zod.literal(30),zod.literal(45),zod.literal(60),zod.literal(90),zod.literal(120),zod.literal(180)]).describe('Maximum recipe time in minutes; zero means no limit'),
+  "diet": zod.enum(['none', 'vegetarian', 'vegan', 'pescetarian', 'glutenFree', 'ketogenic', 'paleo'])
+}).optional(),
   "snackMode": zod.boolean().default(generateScrapCookRecipesBodySnackModeDefault),
   "showNutrition": zod.boolean().default(generateScrapCookRecipesBodyShowNutritionDefault)
 })

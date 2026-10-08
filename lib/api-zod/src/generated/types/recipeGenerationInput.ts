@@ -5,10 +5,16 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { CookingPreferences } from './cookingPreferences';
 
 export interface RecipeGenerationInput {
-  geminiApiKey?: string;
-  spoonacularApiKey?: string;
+  /**
+     * @minItems 3
+     * @maxItems 40
+     * @items.maxLength 60
+     */
+  ingredients: string[];
+  preferences?: CookingPreferences;
   snackMode?: boolean;
   showNutrition?: boolean;
 }

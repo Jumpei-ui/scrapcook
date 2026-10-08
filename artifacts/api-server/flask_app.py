@@ -21,7 +21,7 @@ app.config.update(
     SESSION_COOKIE_NAME="scrapcook_session",
     SESSION_COOKIE_HTTPONLY=True,
     SESSION_COOKIE_SAMESITE="Lax",
-    SESSION_COOKIE_PATH="/api/scrapcook",
+    SESSION_COOKIE_PATH="/api",
     PERMANENT_SESSION_LIFETIME=60 * 60 * 24 * 7,
 )
 app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
@@ -39,7 +39,8 @@ SPOONACULAR_DIETS = {
     "ketogenic": "ketogenic",
     "paleo": "paleo",
 }
-SPOONACULAR_API_KEY = os.environ.get("SPOONACULAR_API_KEY", "").strip()
+SPOONACULAR_API_KEY = os.environ.get("SPOONACULAR_KEY", "").strip()
+GEMINI_KEY = os.environ.get("GEMINI_KEY", "").strip()
 RECIPE_CACHE_TTL_SECONDS = 24 * 60 * 60
 _RECIPE_SEARCH_CACHE = {}
 _RECIPE_SEARCH_CACHE_LOCK = threading.RLock()
@@ -829,6 +830,13 @@ def update_cookie_security():
     app.config["SESSION_COOKIE_SECURE"] = request.is_secure
 
 
+@app.after_request
+def clear_old_cookie_scope(response):
+    # Migrate existing sessions so the new /api/recipes route receives them too.
+    response.delete_cookie(app.config["SESSION_COOKIE_NAME"], path="/api/scrapcook")
+    return response
+
+
 @app.get("/api/scrapcook/session")
 def get_session():
     session.permanent = True
@@ -902,29 +910,41 @@ def update_session():
     return jsonify(session_payload())
 
 
+@app.post("/api/recipes")
 @app.post("/api/scrapcook/recipes")
 def generate_recipes():
-    ingredients = session.get("ingredients", [])
-    preferences = session.get("preferences")
-    if len(ingredients) < 3 or not preferences:
-        return error_response("Add at least three ingredients and choose your preferences first.", 400)
-
     body = request.get_json(silent=True) or {}
     if not isinstance(body, dict):
         return error_response("Enter valid recipe options.", 400)
+    if "geminiApiKey" in body or "spoonacularApiKey" in body:
+        return error_response("Browser API keys are no longer accepted. Refresh the app.", 400)
     snack_mode = body.get("snackMode", False)
     if not isinstance(snack_mode, bool):
         return error_response("Choose Meals or Snacks.", 400)
     show_nutrition = body.get("showNutrition", True)
     if not isinstance(show_nutrition, bool):
         return error_response("Choose whether to show nutrition.", 400)
-    spoonacular_key = body.get("spoonacularApiKey", "")
-    gemini_key = body.get("geminiApiKey", "")
-    if not isinstance(spoonacular_key, str) or not isinstance(gemini_key, str):
-        return error_response("Enter valid API keys in Settings.", 400)
-    spoonacular_key, gemini_key = spoonacular_key.strip(), gemini_key.strip()
+    spoonacular_key, gemini_key = SPOONACULAR_API_KEY, GEMINI_KEY
     if not spoonacular_key and not gemini_key:
-        return error_response("Add API keys in Settings", 400)
+        return error_response("Recipe service is not configured. The app owner must add server API keys.", 503)
+
+    previous_session = dict(session)
+    if request.path == "/api/recipes":
+        body.setdefault("preferences", {
+            "experience": "beginner", "timeAvailable": "15to30", "equipment": ["stove"],
+            "maxReadyTime": 0, "diet": "none",
+        })
+        saved = app.make_response(update_session())
+        if saved.status_code != 200:
+            return saved
+        ingredients, preferences = session["ingredients"], session["preferences"]
+        session.clear()
+        session.update(previous_session)
+        session["ingredients"], session["preferences"] = ingredients, preferences
+    ingredients = session.get("ingredients", [])
+    preferences = session.get("preferences")
+    if len(ingredients) < 3 or not preferences:
+        return error_response("Add at least three ingredients and choose your preferences first.", 400)
 
     try:
         search_key = "hybrid:" + hashlib.sha256(json.dumps(
@@ -957,9 +977,11 @@ def generate_recipes():
             }
         )
     except (HTTPError, URLError, TimeoutError, KeyError, IndexError, ValueError, TypeError):
+        session.clear()
+        session.update(previous_session)
         app.logger.error("Recipe provider request failed; credentials and provider response omitted.")
         return error_response(
-            "Could not generate recipes right now. Check your API keys in Settings and try again.",
+            "Could not generate recipes right now. Please try again later.",
             502,
         )
 

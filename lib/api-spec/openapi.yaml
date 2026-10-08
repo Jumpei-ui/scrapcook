@@ -57,7 +57,7 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ScrapCookSession"
-  /scrapcook/recipes:
+  /recipes:
     post:
       operationId: generateScrapCookRecipes
       tags: [scrapcook]
@@ -83,6 +83,22 @@ paths:
                 $ref: "#/components/schemas/ApiError"
         "502":
           description: Recipe provider request failed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "429":
+          description: More than 20 recipe requests from this IP in the past hour
+          headers:
+            Retry-After:
+              schema:
+                type: integer
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "503":
+          description: Recipe service unavailable or server secrets not configured
           content:
             application/json:
               schema:
@@ -309,18 +325,22 @@ components:
     RecipeGenerationInput:
       type: object
       properties:
-        geminiApiKey:
-          type: string
-          format: password
-        spoonacularApiKey:
-          type: string
-          format: password
+        ingredients:
+          type: array
+          minItems: 3
+          maxItems: 40
+          items:
+            type: string
+            maxLength: 60
+        preferences:
+          $ref: "#/components/schemas/CookingPreferences"
         snackMode:
           type: boolean
           default: false
         showNutrition:
           type: boolean
           default: true
+      required: [ingredients]
     RecipeSummary:
       type: object
       properties:

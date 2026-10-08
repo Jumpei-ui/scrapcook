@@ -312,7 +312,7 @@ export const getGenerateScrapCookRecipesUrl = () => {
 
 
 
-  return `/api/scrapcook/recipes`
+  return `/api/recipes`
 }
 
 /**
