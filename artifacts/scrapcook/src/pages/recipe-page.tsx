@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useShowNutrition } from "@/hooks/use-show-nutrition";
 import {
   ArrowLeft,
   Check,
@@ -258,9 +259,11 @@ function RecipeContent({
 }
 
 export default function RecipePage() {
+  const [showNutrition] = useShowNutrition();
   const [match, params] = useRoute<{ recipeId: string }>("/recipe/:recipeId");
   const recipeId = match ? decodeURIComponent(params.recipeId) : "";
   const recipeQuery = useGetScrapCookRecipe(recipeId, {
+    request: { headers: { "X-Show-Nutrition": String(showNutrition) } },
     query: {
       enabled: Boolean(recipeId),
       queryKey: getGetScrapCookRecipeQueryKey(recipeId),

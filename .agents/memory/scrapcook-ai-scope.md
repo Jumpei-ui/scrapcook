@@ -26,3 +26,9 @@ Nutrition per serving should use provider-supplied data, not invented nutritiona
 **Why:** The user requested Spoonacular nutrients and an explicit “Nutrition info unavailable” fallback when nutrition is missing.
 
 **How to apply:** Keep missing nutrition unavailable, including Gemini-only recipes, unless the user separately requests a nutrition-estimation feature.
+
+Turning nutrition off must skip provider nutrition enrichment, not merely hide it.
+
+**Why:** The user explicitly wants the nutrition toggle to save API credits.
+
+**How to apply:** Apply the saved choice to discovery details, recipe detail fallbacks, and session restoration. Keep nutrition-on and nutrition-off cache entries separate.

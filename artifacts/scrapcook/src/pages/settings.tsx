@@ -9,6 +9,7 @@ import {
 } from "@workspace/api-client-react";
 import type { SavingsComparisonLabel } from "@workspace/api-client-react";
 import { useToast } from "@/hooks/use-toast";
+import { useShowNutrition } from "@/hooks/use-show-nutrition";
 
 const options: SavingsComparisonLabel[] = ["Takeaway", "Uber Eats", "HelloFresh", "Woolies new shop"];
 const AUD = new Intl.NumberFormat("en-AU", { style: "currency", currency: "AUD", minimumFractionDigits: 2 });
@@ -23,6 +24,7 @@ function getError(error: unknown) {
 
 export default function SettingsPage() {
   const { toast } = useToast();
+  const [showNutrition, setShowNutrition] = useShowNutrition();
   const queryClient = useQueryClient();
   const dashboard = useGetScrapCookSavingsDashboard();
   const updateSettings = useUpdateScrapCookSavingsSettings();
@@ -83,6 +85,18 @@ export default function SettingsPage() {
           <nav className="sc-savings-actions" aria-label="ScrapCook navigation">
             <Link className="sc-tool-button" href="/savings"><ArrowLeft size={15} /> Savings dashboard</Link>
             <Link className="sc-tool-button" href="/">Find a recipe</Link>
+            <button
+              type="button" className="sc-tool-button" role="switch"
+              aria-label="Show Nutrition" aria-checked={showNutrition}
+              data-testid="toggle-show-nutrition"
+              style={showNutrition ? { background: "var(--sc-green)", borderColor: "var(--sc-green)", color: "white" } : undefined}
+              onClick={() => {
+                try { setShowNutrition(!showNutrition); }
+                catch { toast({ title: "Could not save nutrition setting", description: "Browser storage is unavailable.", variant: "destructive" }); }
+              }}
+            >
+              Show Nutrition {showNutrition ? "On" : "Off"}
+            </button>
           </nav>
         </div>
         <section className="sc-save-hero">

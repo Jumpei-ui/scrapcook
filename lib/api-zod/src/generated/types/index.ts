@@ -22,6 +22,7 @@ export * from './recipeCostEstimate';
 export * from './recipeCostEstimateEstimateType';
 export * from './recipeCostEstimateInput';
 export * from './recipeDetail';
+export * from './recipeGenerationInput';
 export * from './recipeIngredient';
 export * from './recipeResults';
 export * from './recipeSummary';

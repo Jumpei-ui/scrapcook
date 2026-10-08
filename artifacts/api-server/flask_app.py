@@ -339,9 +339,15 @@ def spoonacular_nutrition(info):
     return result
 
 
-def spoonacular_recipe_details(search_result, information=None):
+def nutrition_requested():
+    setting = request.headers.get("X-Show-Nutrition")
+    return setting == "true" if setting in {"true", "false"} else session.get("showNutrition", True)
+
+
+def spoonacular_recipe_details(search_result, information=None, include_nutrition=True):
     info = information or spoonacular_get(
-        f"/recipes/{search_result['id']}/information", {"includeNutrition": "true"},
+        f"/recipes/{search_result['id']}/information",
+        {"includeNutrition": str(include_nutrition).lower()},
     )
     fridge_ingredients = session.get("ingredients", [])
     ingredients = []
@@ -367,7 +373,7 @@ def spoonacular_recipe_details(search_result, information=None):
         "difficulty": difficulty_for(info),
         "missingIngredients": int(missing_ingredients or 0),
         "servings": int(info.get("servings") or 2),
-        "nutrition": spoonacular_nutrition(info),
+        "nutrition": spoonacular_nutrition(info) if include_nutrition else None,
         "ingredients": ingredients,
         "instructions": scrape_steps(info),
         "instructionsSimplified": False,
@@ -411,9 +417,9 @@ def recipe_search_cache_set(cache_key, value):
         _RECIPE_SEARCH_CACHE[cache_key] = (now + RECIPE_CACHE_TTL_SECONDS, value)
 
 
-def spoonacular_search_data(ingredients, preferences, api_key=None):
+def spoonacular_search_data(ingredients, preferences, api_key=None, include_nutrition=True):
     credential = hashlib.sha256((api_key or SPOONACULAR_API_KEY).encode()).hexdigest()
-    cache_key = recipe_search_cache_key(ingredients, preferences) + ":10:1:" + credential
+    cache_key = recipe_search_cache_key(ingredients, preferences) + f":10:1:nutrition={include_nutrition}:" + credential
     cached = recipe_search_cache_get(cache_key)
     if cached is not None:
         return cache_key, cached
@@ -436,7 +442,7 @@ def spoonacular_search_data(ingredients, preferences, api_key=None):
     if recipe_ids:
         information = spoonacular_get(
             "/recipes/informationBulk",
-            {"ids": ",".join(recipe_ids), "includeNutrition": "true"},
+            {"ids": ",".join(recipe_ids), "includeNutrition": str(include_nutrition).lower()},
             api_key=api_key,
         )
         if not isinstance(information, list):
@@ -456,7 +462,7 @@ def spoonacular_search_data(ingredients, preferences, api_key=None):
     return cache_key, data
 
 
-def filtered_recipe_details(search_data, preferences):
+def filtered_recipe_details(search_data, preferences, include_nutrition=True):
     max_ready_time = int(preferences.get("maxReadyTime") or 0)
     diet = preferences.get("diet", "none")
     expected_diet = normalise(SPOONACULAR_DIETS.get(diet, ""))
@@ -483,7 +489,7 @@ def filtered_recipe_details(search_data, preferences):
             if expected_diet not in actual_diets:
                 continue
 
-        recipe = spoonacular_recipe_details(result, information=information)
+        recipe = spoonacular_recipe_details(result, information=information, include_nutrition=include_nutrition)
         if not recipe["title"].strip() or not recipe["image"].strip():
             continue
         recipes.append(recipe)
@@ -507,8 +513,9 @@ def session_real_recipe_details():
     preferences = normalized_preferences(session.get("preferences"))
     if not SPOONACULAR_API_KEY or not ingredients or not preferences:
         return []
-    _cache_key, search_data = spoonacular_search_data(ingredients, preferences)
-    return filtered_recipe_details(search_data, preferences)
+    include_nutrition = nutrition_requested()
+    _cache_key, search_data = spoonacular_search_data(ingredients, preferences, include_nutrition=include_nutrition)
+    return filtered_recipe_details(search_data, preferences, include_nutrition=include_nutrition)
 
 
 def gemini_json(api_key, prompt):
@@ -608,7 +615,7 @@ def gemini_recipe(data, pantry, source=None, minimum_steps=2):
     }
 
 
-def hybrid_recipes(pantry, preferences, spoonacular_key, gemini_key, snack_mode=False):
+def hybrid_recipes(pantry, preferences, spoonacular_key, gemini_key, snack_mode=False, include_nutrition=True):
     if snack_mode:
         snack_preferences = {**preferences, "maxReadyTime": 15}
         sources = []
@@ -619,12 +626,12 @@ def hybrid_recipes(pantry, preferences, spoonacular_key, gemini_key, snack_mode=
             }, api_key=spoonacular_key).get("results", [])
             recipe_ids = [str(recipe["id"]) for recipe in found if recipe.get("id") is not None]
             information = spoonacular_get("/recipes/informationBulk", {
-                "ids": ",".join(recipe_ids), "includeNutrition": "true",
+                "ids": ",".join(recipe_ids), "includeNutrition": str(include_nutrition).lower(),
             }, api_key=spoonacular_key) if recipe_ids else []
             sources = filtered_recipe_details({
                 "found": found,
                 "information": {str(recipe["id"]): recipe for recipe in information},
-            }, snack_preferences)
+            }, snack_preferences, include_nutrition=include_nutrition)
             sources = [recipe for recipe in sources if not re.search(
                 r"dinner|lunch|main[\s-]+course", recipe["title"], re.I,
             )]
@@ -696,8 +703,10 @@ def hybrid_recipes(pantry, preferences, spoonacular_key, gemini_key, snack_mode=
             raise ValueError("Gemini did not return recipes.")
         details = [gemini_recipe(recipe, pantry) for recipe in recipes[:10]]
     else:
-        _key, search_data = spoonacular_search_data(pantry, preferences, api_key=spoonacular_key)
-        details = filtered_recipe_details(search_data, preferences)
+        _key, search_data = spoonacular_search_data(
+            pantry, preferences, api_key=spoonacular_key, include_nutrition=include_nutrition,
+        )
+        details = filtered_recipe_details(search_data, preferences, include_nutrition=include_nutrition)
         if not gemini_key:
             details = [recipe for recipe in details if recipe["instructions"]]
         if gemini_key:
@@ -906,6 +915,9 @@ def generate_recipes():
     snack_mode = body.get("snackMode", False)
     if not isinstance(snack_mode, bool):
         return error_response("Choose Meals or Snacks.", 400)
+    show_nutrition = body.get("showNutrition", True)
+    if not isinstance(show_nutrition, bool):
+        return error_response("Choose whether to show nutrition.", 400)
     spoonacular_key = body.get("spoonacularApiKey", "")
     gemini_key = body.get("geminiApiKey", "")
     if not isinstance(spoonacular_key, str) or not isinstance(gemini_key, str):
@@ -916,11 +928,14 @@ def generate_recipes():
 
     try:
         search_key = "hybrid:" + hashlib.sha256(json.dumps(
-            [ingredients, preferences, spoonacular_key, gemini_key, snack_mode], sort_keys=True,
+            [ingredients, preferences, spoonacular_key, gemini_key, snack_mode, show_nutrition], sort_keys=True,
         ).encode()).hexdigest()
         details = recipe_search_cache_get(search_key)
         if details is None:
-            details = hybrid_recipes(ingredients, preferences, spoonacular_key, gemini_key, snack_mode)
+            details = hybrid_recipes(
+                ingredients, preferences, spoonacular_key, gemini_key, snack_mode,
+                include_nutrition=show_nutrition,
+            )
             batch_id = os.urandom(10).hex()
             details = [
                 {**recipe, "id": f"generated-{'snack-' if snack_mode else ''}{batch_id}-{index}"}
@@ -931,6 +946,7 @@ def generate_recipes():
         session["recipes"] = [recipe_summary(recipe) for recipe in details]
         session["recipeIds"] = [str(recipe["id"]) for recipe in details]
         session["recipeSearchKey"] = search_key
+        session["showNutrition"] = show_nutrition
         session["demoMode"] = False
         session["madeRecipeIds"] = []
         session.permanent = True
@@ -975,9 +991,11 @@ def get_recipe(recipe_id):
         preferences = normalized_preferences(session.get("preferences"))
         if not preferences:
             return error_response("Choose your preferences and generate recipes again.", 400)
+        include_nutrition = nutrition_requested()
         _cache_key, search_data = spoonacular_search_data(
             session.get("ingredients", []),
             preferences,
+            include_nutrition=include_nutrition,
         )
         search_result = next(
             (
@@ -990,7 +1008,7 @@ def get_recipe(recipe_id):
         if not found:
             found = spoonacular_get(
                 f"/recipes/{recipe_id}/information",
-                {"includeNutrition": "true"},
+                {"includeNutrition": str(include_nutrition).lower()},
             )
         detail = spoonacular_recipe_details(
             {
@@ -998,6 +1016,7 @@ def get_recipe(recipe_id):
                 "id": found.get("id", recipe_id),
             },
             information=found,
+            include_nutrition=include_nutrition,
         )
         return jsonify({**detail, "made": recipe_id in session.get("madeRecipeIds", [])})
     except (HTTPError, URLError, TimeoutError, json.JSONDecodeError, KeyError, ValueError):

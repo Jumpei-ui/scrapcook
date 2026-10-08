@@ -28,6 +28,7 @@ import type {
   ScrapCookSession,
 } from "@workspace/api-client-react";
 import CookedMealDialog from "@/components/cooked-meal-dialog";
+import { useShowNutrition } from "@/hooks/use-show-nutrition";
 
 type FlowStep = "ingredients" | "preferences" | "results";
 type EquipmentChoice = CookingPreferences["equipment"][number];
@@ -420,7 +421,7 @@ function PreferencesCard({
   );
 }
 
-function RecipeCard({ recipe, index, snackMode }: { recipe: RecipeSummary; index: number; snackMode: boolean }) {
+function RecipeCard({ recipe, index, snackMode, showNutrition }: { recipe: RecipeSummary; index: number; snackMode: boolean; showNutrition: boolean }) {
   const imageLabel = `Photo of ${recipe.title}`;
   return (
     <article className="sc-recipe-card" data-testid={`card-recipe-${recipe.id}`}>
@@ -461,7 +462,7 @@ function RecipeCard({ recipe, index, snackMode }: { recipe: RecipeSummary; index
           triggerClassName="sc-card-cooked-link"
           triggerLabel="I Cooked This!"
         />
-        <p className="sc-hint" data-testid={`nutrition-recipe-${recipe.id}`}>
+        {showNutrition && <p className="sc-hint" data-testid={`nutrition-recipe-${recipe.id}`}>
           {recipe.nutrition ? (
             <>
               Nutrition per serving — Calories: {Math.round(recipe.nutrition.calories)}
@@ -471,13 +472,13 @@ function RecipeCard({ recipe, index, snackMode }: { recipe: RecipeSummary; index
           ) : (
             <>Nutrition per serving<br />Nutrition info unavailable</>
           )}
-        </p>
+        </p>}
       </div>
     </article>
   );
 }
 
-async function generateRecipesWithSavedKeys(snackMode: boolean): Promise<RecipeResults> {
+async function generateRecipesWithSavedKeys(snackMode: boolean, showNutrition: boolean): Promise<RecipeResults> {
   let geminiApiKey = "";
   let spoonacularApiKey = "";
   try {
@@ -491,7 +492,7 @@ async function generateRecipesWithSavedKeys(snackMode: boolean): Promise<RecipeR
     method: "POST",
     credentials: "same-origin",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ geminiApiKey, spoonacularApiKey, snackMode }),
+    body: JSON.stringify({ geminiApiKey, spoonacularApiKey, snackMode, showNutrition }),
   });
   const result = await response.json();
   if (!response.ok) throw new Error(result.error ?? "Could not generate recipes. Check your API keys in Settings.");
@@ -500,9 +501,12 @@ async function generateRecipesWithSavedKeys(snackMode: boolean): Promise<RecipeR
 
 export default function HomePage() {
   const queryClient = useQueryClient();
-  const sessionQuery = useGetScrapCookSession();
+  const [showNutrition] = useShowNutrition();
+  const sessionQuery = useGetScrapCookSession({
+    request: { headers: { "X-Show-Nutrition": String(showNutrition) } },
+  });
   const saveSession = useUpdateScrapCookSession();
-  const generateRecipes = useMutation({ mutationFn: generateRecipesWithSavedKeys });
+  const generateRecipes = useMutation({ mutationFn: (snacks: boolean) => generateRecipesWithSavedKeys(snacks, showNutrition) });
   const [step, setStep] = useState<FlowStep>("ingredients");
   const [ingredients, setIngredients] = useState<string[]>([]);
   const [preferences, setPreferences] = useState<CookingPreferences>(defaultPreferences);
@@ -751,7 +755,7 @@ export default function HomePage() {
               </div>
             ) : recipes.length > 0 ? (
               <div className="sc-recipe-grid">
-                {recipes.map((recipe, index) => <RecipeCard recipe={recipe} index={index} snackMode={snackMode || recipe.id.startsWith("generated-snack-")} key={recipe.id} />)}
+                {recipes.map((recipe, index) => <RecipeCard recipe={recipe} index={index} snackMode={snackMode || recipe.id.startsWith("generated-snack-")} showNutrition={showNutrition} key={recipe.id} />)}
               </div>
             ) : (
               <div className="sc-empty-results">

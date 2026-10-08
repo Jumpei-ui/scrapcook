@@ -110,6 +110,16 @@ export const UpdateScrapCookSessionResponse = zod.object({
 /**
  * @summary Find up to 50 recipes using ingredients and cooking preferences
  */
+export const generateScrapCookRecipesBodySnackModeDefault = false;
+export const generateScrapCookRecipesBodyShowNutritionDefault = true;
+
+export const GenerateScrapCookRecipesBody = zod.object({
+  "geminiApiKey": zod.string().optional(),
+  "spoonacularApiKey": zod.string().optional(),
+  "snackMode": zod.boolean().default(generateScrapCookRecipesBodySnackModeDefault),
+  "showNutrition": zod.boolean().default(generateScrapCookRecipesBodyShowNutritionDefault)
+})
+
 export const generateScrapCookRecipesResponseRecipesMin = 0;
 export const generateScrapCookRecipesResponseRecipesMax = 50;
 

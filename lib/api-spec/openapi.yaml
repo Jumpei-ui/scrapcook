@@ -62,6 +62,12 @@ paths:
       operationId: generateScrapCookRecipes
       tags: [scrapcook]
       summary: Find up to 50 recipes using ingredients and cooking preferences
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RecipeGenerationInput"
       responses:
         "200":
           description: Matching Spoonacular recipes
@@ -300,6 +306,21 @@ components:
             - $ref: "#/components/schemas/CookingPreferences"
             - type: "null"
       required: [ingredients, preferences]
+    RecipeGenerationInput:
+      type: object
+      properties:
+        geminiApiKey:
+          type: string
+          format: password
+        spoonacularApiKey:
+          type: string
+          format: password
+        snackMode:
+          type: boolean
+          default: false
+        showNutrition:
+          type: boolean
+          default: true
     RecipeSummary:
       type: object
       properties:

@@ -88,6 +88,13 @@ export interface ScrapCookSessionInput {
   preferences: CookingPreferences | null;
 }
 
+export interface RecipeGenerationInput {
+  geminiApiKey?: string;
+  spoonacularApiKey?: string;
+  snackMode?: boolean;
+  showNutrition?: boolean;
+}
+
 export type RecipeSummaryDifficulty = typeof RecipeSummaryDifficulty[keyof typeof RecipeSummaryDifficulty];
 
 
