@@ -160,6 +160,132 @@ export const GenerateScrapCookRecipesResponse = zod.object({
 
 
 /**
+ * @summary Compatibility alias for recipe generation
+ */
+export const generateScrapCookRecipesAliasBodyIngredientsItemMax = 60;
+
+export const generateScrapCookRecipesAliasBodyIngredientsMin = 3;
+export const generateScrapCookRecipesAliasBodyIngredientsMax = 40;
+
+
+export const generateScrapCookRecipesAliasBodySnackModeDefault = false;
+export const generateScrapCookRecipesAliasBodyShowNutritionDefault = true;
+
+export const GenerateScrapCookRecipesAliasBody = zod.object({
+  "ingredients": zod.array(zod.string().max(generateScrapCookRecipesAliasBodyIngredientsItemMax)).min(generateScrapCookRecipesAliasBodyIngredientsMin).max(generateScrapCookRecipesAliasBodyIngredientsMax),
+  "preferences": zod.object({
+  "experience": zod.enum(['beginner', 'intermediate', 'pro']),
+  "timeAvailable": zod.enum(['under15', '15to30', '30to60', 'noLimit']),
+  "equipment": zod.array(zod.enum(['stove', 'oven', 'microwave', 'airFryer', 'coldMeals'])).min(1),
+  "maxReadyTime": zod.union([zod.literal(0),zod.literal(15),zod.literal(30),zod.literal(45),zod.literal(60),zod.literal(90),zod.literal(120),zod.literal(180)]).describe('Maximum recipe time in minutes; zero means no limit'),
+  "diet": zod.enum(['none', 'vegetarian', 'vegan', 'pescetarian', 'glutenFree', 'ketogenic', 'paleo'])
+}).optional(),
+  "snackMode": zod.boolean().default(generateScrapCookRecipesAliasBodySnackModeDefault),
+  "showNutrition": zod.boolean().default(generateScrapCookRecipesAliasBodyShowNutritionDefault)
+})
+
+export const generateScrapCookRecipesAliasResponseRecipesMin = 0;
+export const generateScrapCookRecipesAliasResponseRecipesMax = 50;
+
+
+
+export const GenerateScrapCookRecipesAliasResponse = zod.object({
+  "recipes": zod.array(zod.object({
+  "id": zod.string(),
+  "title": zod.string(),
+  "image": zod.string().url(),
+  "readyInMinutes": zod.number().int(),
+  "difficulty": zod.enum(['Beginner', 'Intermediate', 'Pro']),
+  "missingIngredients": zod.number().int(),
+  "servings": zod.number().int(),
+  "made": zod.boolean(),
+  "nutrition": zod.object({
+  "calories": zod.number(),
+  "protein": zod.number(),
+  "carbs": zod.number(),
+  "fat": zod.number(),
+  "fiber": zod.number()
+}).nullish()
+})).min(generateScrapCookRecipesAliasResponseRecipesMin).max(generateScrapCookRecipesAliasResponseRecipesMax),
+  "demoMode": zod.boolean()
+})
+
+
+/**
+ * @summary Exchange the owner password for an HttpOnly admin session
+ */
+export const LoginPrivateRecipeAdminBody = zod.object({
+  "password": zod.string()
+})
+
+export const LoginPrivateRecipeAdminResponse = zod.void()
+
+
+/**
+ * @summary Owner-only daily usage and recent request history
+ */
+export const getPrivateRecipeUsageResponseRecentRequestsMax = 20;
+
+
+
+export const GetPrivateRecipeUsageResponse = zod.object({
+  "date": zod.string(),
+  "spoon": zod.number().int(),
+  "gemini": zod.number().int(),
+  "totalRequests": zod.number().int(),
+  "recentRequests": zod.array(zod.object({
+  "ip": zod.string(),
+  "timestamp": zod.coerce.date()
+})).max(getPrivateRecipeUsageResponseRecentRequestsMax),
+  "limits": zod.object({
+  "spoon": zod.number().int(),
+  "gemini": zod.number().int()
+})
+})
+
+
+/**
+ * @summary Owner-only reset of display counters, not provider quotas or protective limits
+ */
+export const ResetPrivateRecipeUsageHeader = zod.object({
+  "X-Admin-CSRF": zod.string()
+})
+
+export const resetPrivateRecipeUsageResponseRecentRequestsMax = 20;
+
+
+
+export const ResetPrivateRecipeUsageResponse = zod.object({
+  "date": zod.string(),
+  "spoon": zod.number().int(),
+  "gemini": zod.number().int(),
+  "totalRequests": zod.number().int(),
+  "recentRequests": zod.array(zod.object({
+  "ip": zod.string(),
+  "timestamp": zod.coerce.date()
+})).max(resetPrivateRecipeUsageResponseRecentRequestsMax),
+  "limits": zod.object({
+  "spoon": zod.number().int(),
+  "gemini": zod.number().int()
+})
+})
+
+
+/**
+ * @summary Authenticated server-to-server provider-call tracking
+ */
+export const RecordInternalProviderUsageHeader = zod.object({
+  "X-Internal-Usage": zod.string()
+})
+
+export const RecordInternalProviderUsageBody = zod.object({
+  "provider": zod.enum(['spoon', 'gemini'])
+})
+
+export const RecordInternalProviderUsageResponse = zod.void()
+
+
+/**
  * @summary Get ingredients and instructions for a recipe
  */
 export const GetScrapCookRecipeParams = zod.object({

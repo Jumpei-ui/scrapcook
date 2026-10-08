@@ -24,7 +24,10 @@ import type {
   CookedMeal,
   CookedMealInput,
   HealthStatus,
+  InternalProviderUsageInput,
   MadeRecipe,
+  PrivateAdminLoginInput,
+  PrivateRecipeUsage,
   RecipeCostEstimate,
   RecipeCostEstimateInput,
   RecipeDetail,
@@ -393,6 +396,421 @@ export const useGenerateScrapCookRecipes = <TError = ErrorType<ApiError>,
         TContext
       > => {
       return useMutation(getGenerateScrapCookRecipesMutationOptions(options));
+    }
+
+export const getGenerateScrapCookRecipesAliasUrl = () => {
+
+
+
+
+  return `/api/getRecipes`
+}
+
+/**
+ * @summary Compatibility alias for recipe generation
+ */
+export const generateScrapCookRecipesAlias = async (recipeGenerationInput: RecipeGenerationInput, options?: Parameters<typeof customFetch>[1]): Promise<RecipeResults> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<RecipeResults>(getGenerateScrapCookRecipesAliasUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(recipeGenerationInput)
+  }
+);}
+
+
+
+
+
+export const getGenerateScrapCookRecipesAliasMutationKey = () => ['generateScrapCookRecipesAlias'] as const;
+
+export const getGenerateScrapCookRecipesAliasMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof generateScrapCookRecipesAlias>>, TError,GenerateScrapCookRecipesAliasMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof generateScrapCookRecipesAlias>>, TError,GenerateScrapCookRecipesAliasMutationVariables, TContext> => {
+
+const mutationKey = getGenerateScrapCookRecipesAliasMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof generateScrapCookRecipesAlias>>, GenerateScrapCookRecipesAliasMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  generateScrapCookRecipesAlias(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type GenerateScrapCookRecipesAliasMutationResult = NonNullable<Awaited<ReturnType<typeof generateScrapCookRecipesAlias>>>
+    export type GenerateScrapCookRecipesAliasMutationBody = BodyType<RecipeGenerationInput>
+    export type GenerateScrapCookRecipesAliasMutationError = ErrorType<void>
+    export type GenerateScrapCookRecipesAliasMutationVariables = {data: BodyType<RecipeGenerationInput>}
+
+    /**
+ * @summary Compatibility alias for recipe generation
+ */
+export const useGenerateScrapCookRecipesAlias = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof generateScrapCookRecipesAlias>>, TError,GenerateScrapCookRecipesAliasMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof generateScrapCookRecipesAlias>>,
+        TError,
+        GenerateScrapCookRecipesAliasMutationVariables,
+        TContext
+      > => {
+      return useMutation(getGenerateScrapCookRecipesAliasMutationOptions(options));
+    }
+
+export const getLoginPrivateRecipeAdminUrl = () => {
+
+
+
+
+  return `/api/admin/login`
+}
+
+/**
+ * @summary Exchange the owner password for an HttpOnly admin session
+ */
+export const loginPrivateRecipeAdmin = async (privateAdminLoginInput: PrivateAdminLoginInput, options?: Parameters<typeof customFetch>[1]): Promise<void> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<void>(getLoginPrivateRecipeAdminUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(privateAdminLoginInput)
+  }
+);}
+
+
+
+
+
+export const getLoginPrivateRecipeAdminMutationKey = () => ['loginPrivateRecipeAdmin'] as const;
+
+export const getLoginPrivateRecipeAdminMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof loginPrivateRecipeAdmin>>, TError,LoginPrivateRecipeAdminMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof loginPrivateRecipeAdmin>>, TError,LoginPrivateRecipeAdminMutationVariables, TContext> => {
+
+const mutationKey = getLoginPrivateRecipeAdminMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof loginPrivateRecipeAdmin>>, LoginPrivateRecipeAdminMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  loginPrivateRecipeAdmin(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type LoginPrivateRecipeAdminMutationResult = NonNullable<Awaited<ReturnType<typeof loginPrivateRecipeAdmin>>>
+    export type LoginPrivateRecipeAdminMutationBody = BodyType<PrivateAdminLoginInput>
+    export type LoginPrivateRecipeAdminMutationError = ErrorType<void>
+    export type LoginPrivateRecipeAdminMutationVariables = {data: BodyType<PrivateAdminLoginInput>}
+
+    /**
+ * @summary Exchange the owner password for an HttpOnly admin session
+ */
+export const useLoginPrivateRecipeAdmin = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof loginPrivateRecipeAdmin>>, TError,LoginPrivateRecipeAdminMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof loginPrivateRecipeAdmin>>,
+        TError,
+        LoginPrivateRecipeAdminMutationVariables,
+        TContext
+      > => {
+      return useMutation(getLoginPrivateRecipeAdminMutationOptions(options));
+    }
+
+export const getGetPrivateRecipeUsageUrl = () => {
+
+
+
+
+  return `/api/admin/usage`
+}
+
+/**
+ * @summary Owner-only daily usage and recent request history
+ */
+export const getPrivateRecipeUsage = async ( options?: Parameters<typeof customFetch>[1]): Promise<PrivateRecipeUsage> => {
+
+  return customFetch<PrivateRecipeUsage>(getGetPrivateRecipeUsageUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetPrivateRecipeUsageQueryKey = () => {
+    return [
+    `/api/admin/usage`
+    ] as const;
+    }
+
+
+export const getGetPrivateRecipeUsageQueryOptions = <TData = Awaited<ReturnType<typeof getPrivateRecipeUsage>>, TError = ErrorType<void>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPrivateRecipeUsage>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetPrivateRecipeUsageQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getPrivateRecipeUsage>>> = ({ signal }) => getPrivateRecipeUsage({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getPrivateRecipeUsage>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetPrivateRecipeUsageQueryResult = NonNullable<Awaited<ReturnType<typeof getPrivateRecipeUsage>>>
+export type GetPrivateRecipeUsageQueryError = ErrorType<void>
+
+
+/**
+ * @summary Owner-only daily usage and recent request history
+ */
+
+export function useGetPrivateRecipeUsage<TData = Awaited<ReturnType<typeof getPrivateRecipeUsage>>, TError = ErrorType<void>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPrivateRecipeUsage>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetPrivateRecipeUsageQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getResetPrivateRecipeUsageUrl = () => {
+
+
+
+
+  return `/api/admin/reset`
+}
+
+/**
+ * @summary Owner-only reset of display counters, not provider quotas or protective limits
+ */
+export const resetPrivateRecipeUsage = async ( options?: Parameters<typeof customFetch>[1]): Promise<PrivateRecipeUsage> => {
+
+  return customFetch<PrivateRecipeUsage>(getResetPrivateRecipeUsageUrl(),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getResetPrivateRecipeUsageMutationKey = () => ['resetPrivateRecipeUsage'] as const;
+
+export const getResetPrivateRecipeUsageMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof resetPrivateRecipeUsage>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof resetPrivateRecipeUsage>>, TError,void, TContext> => {
+
+const mutationKey = getResetPrivateRecipeUsageMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof resetPrivateRecipeUsage>>, void> = () => {
+
+
+          return  resetPrivateRecipeUsage(requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ResetPrivateRecipeUsageMutationResult = NonNullable<Awaited<ReturnType<typeof resetPrivateRecipeUsage>>>
+
+    export type ResetPrivateRecipeUsageMutationError = ErrorType<void>
+
+
+    /**
+ * @summary Owner-only reset of display counters, not provider quotas or protective limits
+ */
+export const useResetPrivateRecipeUsage = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof resetPrivateRecipeUsage>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof resetPrivateRecipeUsage>>,
+        TError,
+        void,
+        TContext
+      > => {
+      return useMutation(getResetPrivateRecipeUsageMutationOptions(options));
+    }
+
+export const getRecordInternalProviderUsageUrl = () => {
+
+
+
+
+  return `/api/internal/provider-usage`
+}
+
+/**
+ * @summary Authenticated server-to-server provider-call tracking
+ */
+export const recordInternalProviderUsage = async (internalProviderUsageInput: InternalProviderUsageInput, options?: Parameters<typeof customFetch>[1]): Promise<void> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<void>(getRecordInternalProviderUsageUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(internalProviderUsageInput)
+  }
+);}
+
+
+
+
+
+export const getRecordInternalProviderUsageMutationKey = () => ['recordInternalProviderUsage'] as const;
+
+export const getRecordInternalProviderUsageMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof recordInternalProviderUsage>>, TError,RecordInternalProviderUsageMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof recordInternalProviderUsage>>, TError,RecordInternalProviderUsageMutationVariables, TContext> => {
+
+const mutationKey = getRecordInternalProviderUsageMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof recordInternalProviderUsage>>, RecordInternalProviderUsageMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  recordInternalProviderUsage(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RecordInternalProviderUsageMutationResult = NonNullable<Awaited<ReturnType<typeof recordInternalProviderUsage>>>
+    export type RecordInternalProviderUsageMutationBody = BodyType<InternalProviderUsageInput>
+    export type RecordInternalProviderUsageMutationError = ErrorType<void>
+    export type RecordInternalProviderUsageMutationVariables = {data: BodyType<InternalProviderUsageInput>}
+
+    /**
+ * @summary Authenticated server-to-server provider-call tracking
+ */
+export const useRecordInternalProviderUsage = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof recordInternalProviderUsage>>, TError,RecordInternalProviderUsageMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof recordInternalProviderUsage>>,
+        TError,
+        RecordInternalProviderUsageMutationVariables,
+        TContext
+      > => {
+      return useMutation(getRecordInternalProviderUsageMutationOptions(options));
     }
 
 export const getGetScrapCookRecipeUrl = (recipeId: string,) => {

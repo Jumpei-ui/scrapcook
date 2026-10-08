@@ -5,6 +5,42 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+export interface PrivateAdminLoginInput {
+  password: string;
+}
+
+export type InternalProviderUsageInputProvider = typeof InternalProviderUsageInputProvider[keyof typeof InternalProviderUsageInputProvider];
+
+
+export const InternalProviderUsageInputProvider = {
+  spoon: 'spoon',
+  gemini: 'gemini',
+} as const;
+
+export interface InternalProviderUsageInput {
+  provider: InternalProviderUsageInputProvider;
+}
+
+export type PrivateRecipeUsageRecentRequestsItem = {
+  ip: string;
+  timestamp: string;
+};
+
+export type PrivateRecipeUsageLimits = {
+  spoon: number;
+  gemini: number;
+};
+
+export interface PrivateRecipeUsage {
+  date: string;
+  spoon: number;
+  gemini: number;
+  totalRequests: number;
+  /** @maxItems 20 */
+  recentRequests: PrivateRecipeUsageRecentRequestsItem[];
+  limits: PrivateRecipeUsageLimits;
+}
+
 export interface HealthStatus {
   status: string;
 }

@@ -1,5 +1,6 @@
 import html
 import hashlib
+import hmac
 import json
 import math
 import os
@@ -308,11 +309,32 @@ def difficulty_for(information):
     return "Intermediate"
 
 
+def record_provider_usage(provider):
+    token = hmac.new(
+        os.environ["SESSION_SECRET"].encode(),
+        b"scrapcook-provider-usage",
+        hashlib.sha256,
+    ).hexdigest()
+    usage_request = Request(
+        f"http://127.0.0.1:{os.environ.get('PORT', '8080')}/api/internal/provider-usage",
+        data=json.dumps({"provider": provider}).encode(),
+        method="POST",
+        headers={"Content-Type": "application/json", "x-internal-usage": token},
+    )
+    try:
+        with urlopen(usage_request, timeout=10) as response:
+            if response.status != 204:
+                raise ValueError("Provider usage tracking is unavailable.")
+    except (HTTPError, URLError, TimeoutError):
+        raise ValueError("Provider usage tracking is unavailable.") from None
+
+
 def spoonacular_get(path, params=None, api_key=None):
     query = dict(params or {})
     query["apiKey"] = api_key or SPOONACULAR_API_KEY
     url = f"https://api.spoonacular.com{path}?{urlencode(query)}"
     request_object = Request(url, headers={"Accept": "application/json"})
+    record_provider_usage("spoon")
     with urlopen(request_object, timeout=20) as response:
         return json.loads(response.read().decode("utf-8"))
 
@@ -531,6 +553,7 @@ def gemini_json(api_key, prompt):
     )
     for attempt in range(3):
         try:
+            record_provider_usage("gemini")
             with urlopen(provider_request, timeout=40) as response:
                 result = json.loads(response.read().decode())
             parts = result["candidates"][0]["content"]["parts"]
@@ -727,6 +750,7 @@ def hybrid_recipes(pantry, preferences, spoonacular_key, gemini_key, snack_mode=
                             method="POST",
                             headers={"Content-Type": "application/json", "x-goog-api-key": gemini_key},
                         )
+                        record_provider_usage("gemini")
                         with urlopen(provider_request, timeout=40) as response:
                             result = json.loads(response.read().decode())
                         text = "".join(
@@ -911,6 +935,7 @@ def update_session():
 
 
 @app.post("/api/recipes")
+@app.post("/api/getRecipes")
 @app.post("/api/scrapcook/recipes")
 def generate_recipes():
     body = request.get_json(silent=True) or {}
@@ -929,7 +954,7 @@ def generate_recipes():
         return error_response("Recipe service is not configured. The app owner must add server API keys.", 503)
 
     previous_session = dict(session)
-    if request.path == "/api/recipes":
+    if request.path in {"/api/recipes", "/api/getRecipes"}:
         body.setdefault("preferences", {
             "experience": "beginner", "timeAvailable": "15to30", "equipment": ["stove"],
             "maxReadyTime": 0, "diet": "none",

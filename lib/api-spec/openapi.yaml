@@ -103,6 +103,123 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiError"
+  /getRecipes:
+    post:
+      operationId: generateScrapCookRecipesAlias
+      tags: [scrapcook]
+      summary: Compatibility alias for recipe generation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RecipeGenerationInput"
+      responses:
+        "200":
+          description: Recipe results
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RecipeResults"
+        "400":
+          description: Invalid recipe request
+        "429":
+          description: Recipe usage limit reached
+        "502":
+          description: Provider failure
+        "503":
+          description: Service unavailable
+  /admin/login:
+    post:
+      operationId: loginPrivateRecipeAdmin
+      tags: [admin]
+      summary: Exchange the owner password for an HttpOnly admin session
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PrivateAdminLoginInput"
+      responses:
+        "204":
+          description: Signed HttpOnly admin cookie issued
+        "404":
+          description: Not found
+  /admin/usage:
+    get:
+      operationId: getPrivateRecipeUsage
+      tags: [admin]
+      summary: Owner-only daily usage and recent request history
+      parameters:
+        - in: cookie
+          name: scrapcook_admin
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Brisbane-local daily usage
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PrivateRecipeUsage"
+        "404":
+          description: Not found
+        "503":
+          description: Usage storage unavailable
+  /admin/reset:
+    post:
+      operationId: resetPrivateRecipeUsage
+      tags: [admin]
+      summary: Owner-only reset of display counters, not provider quotas or protective limits
+      parameters:
+        - in: cookie
+          name: scrapcook_admin
+          required: true
+          schema:
+            type: string
+        - in: header
+          name: X-Admin-CSRF
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Reset counters
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PrivateRecipeUsage"
+        "404":
+          description: Not found
+        "503":
+          description: Usage storage unavailable
+  /internal/provider-usage:
+    post:
+      operationId: recordInternalProviderUsage
+      tags: [internal]
+      summary: Authenticated server-to-server provider-call tracking
+      parameters:
+        - in: header
+          name: X-Internal-Usage
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/InternalProviderUsageInput"
+      responses:
+        "204":
+          description: Provider call recorded
+        "400":
+          description: Invalid provider
+        "404":
+          description: Not found
+        "503":
+          description: Usage storage unavailable
   /scrapcook/recipes/{recipeId}:
     get:
       operationId: getScrapCookRecipe
@@ -267,6 +384,52 @@ paths:
                 $ref: "#/components/schemas/ApiError"
 components:
   schemas:
+    PrivateAdminLoginInput:
+      type: object
+      required: [password]
+      properties:
+        password:
+          type: string
+          writeOnly: true
+    InternalProviderUsageInput:
+      type: object
+      required: [provider]
+      properties:
+        provider:
+          type: string
+          enum: [spoon, gemini]
+    PrivateRecipeUsage:
+      type: object
+      required: [date, spoon, gemini, totalRequests, recentRequests, limits]
+      properties:
+        date:
+          type: string
+        spoon:
+          type: integer
+        gemini:
+          type: integer
+        totalRequests:
+          type: integer
+        recentRequests:
+          type: array
+          maxItems: 20
+          items:
+            type: object
+            required: [ip, timestamp]
+            properties:
+              ip:
+                type: string
+              timestamp:
+                type: string
+                format: date-time
+        limits:
+          type: object
+          required: [spoon, gemini]
+          properties:
+            spoon:
+              type: integer
+            gemini:
+              type: integer
     HealthStatus:
       type: object
       properties:

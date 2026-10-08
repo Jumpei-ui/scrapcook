@@ -1,6 +1,7 @@
 import { Router, type IRouter, type Request, type Response } from "express";
 import savingsRouter from "./savings";
 import { recipeRateLimit } from "../middlewares/recipe-rate-limit";
+import { recordRecipeRequest } from "../lib/recipe-usage";
 
 const router: IRouter = Router();
 const pythonPort = Number(process.env.SCRAPCOOK_PY_PORT ?? 5087);
@@ -24,7 +25,7 @@ async function callPython(req: Request): Promise<globalThis.Response> {
     method: req.method,
     headers,
     body: hasBody ? JSON.stringify(req.body ?? {}) : undefined,
-    signal: AbortSignal.timeout(req.method === "POST" && req.originalUrl.endsWith("/recipes") ? 180_000 : 25_000),
+    signal: AbortSignal.timeout(req.method === "POST" && ["/api/recipes", "/api/getRecipes", "/api/scrapcook/recipes"].includes(req.originalUrl.split("?")[0]) ? 180_000 : 25_000),
   });
 }
 
@@ -38,7 +39,14 @@ function relayPythonResponse(res: Response, upstream: globalThis.Response, body:
 router.use("/scrapcook/savings", savingsRouter);
 
 // Keep the old generation URL behind the same limiter; it must not be a bypass.
-router.post(["/recipes", "/scrapcook/recipes"], recipeRateLimit, async (req, res) => {
+router.post(["/recipes", "/getRecipes", "/scrapcook/recipes"], recipeRateLimit, async (req, res) => {
+  try {
+    await recordRecipeRequest(req.ip!);
+  } catch {
+    req.log.error("Recipe usage could not be recorded");
+    res.status(503).json({ error: "Recipe usage tracking is unavailable. Please try again later." });
+    return;
+  }
   try {
     const upstream = await callPython(req);
     relayPythonResponse(res, upstream, await upstream.text());
