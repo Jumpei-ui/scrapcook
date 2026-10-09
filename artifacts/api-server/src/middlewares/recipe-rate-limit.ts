@@ -96,10 +96,7 @@ export const recipeRateLimit: RequestHandler = async (req, res, next) => {
     `, [dailyLimit]);
     const usage = daily.rows[0];
     if (!usage) throw new Error("Daily recipe counter is unavailable.");
-    res.setHeader("Recipe-Daily-Limit", String(dailyLimit));
-    res.setHeader("Recipe-Daily-Remaining", String(
-      usage.used === null ? 0 : Math.max(0, dailyLimit - usage.used),
-    ));
+    // Shared usage figures belong only on the password-protected owner page.
     if (usage.used === null) {
       res.setHeader("Retry-After", String(usage.seconds));
       res.status(429).json({

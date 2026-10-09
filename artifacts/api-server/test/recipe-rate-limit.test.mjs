@@ -113,8 +113,8 @@ test("shared recipe limits", async (t) => {
       assert.equal(providerCalls, 3);
       assert.equal((await pool.query("SELECT used FROM recipe_daily_usage")).rows[0].used, 3);
       const blocked = replies.find((r) => r.status === 429);
-      assert.equal(blocked.headers.get("Recipe-Daily-Remaining"), "0");
-      assert.equal(blocked.headers.get("Recipe-Daily-Limit"), "3");
+      assert.equal(blocked.headers.get("Recipe-Daily-Remaining"), null);
+      assert.equal(blocked.headers.get("Recipe-Daily-Limit"), null);
       const now = new Date();
       const seconds = Math.ceil((Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1) - now.getTime()) / 1000);
       assert.ok(Math.abs(Number(blocked.headers.get("Retry-After")) - seconds) <= 3);

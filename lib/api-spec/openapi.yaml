@@ -102,14 +102,6 @@ paths:
               schema:
                 type: integer
                 minimum: 1
-            Recipe-Daily-Limit:
-              description: Owner-configured daily cap, present when the daily limiter is reached
-              schema:
-                type: integer
-            Recipe-Daily-Remaining:
-              description: Remaining daily attempts, zero when the daily cap is reached
-              schema:
-                type: integer
           content:
             application/json:
               schema:

@@ -2,6 +2,6 @@
 - [ScrapCook estimate source](scrapcook-estimates.md) — use editable Australian grocery reference values; don't retry declined AI setup.
 - [ScrapCook AI scope](scrapcook-ai-scope.md) — Spoonacular discovery, Gemini detail expansion or pantry-only fallback; keep grocery estimates outside AI.
 - [Recipe photo policy](recipe-photo-policy.md) — prefer provider photos; any future generated recipe photo must use the requested photography style and actual ingredients.
-- [Scoped session testing](scoped-session-testing.md) — Flask test session transactions must use a path within the API cookie's scope.
+- [Protected session testing](scoped-session-testing.md) — respect cookie paths; browser scripts may lack Node environment access, so never dump credentials to work around it.
 - [Private usage policy](private-usage-policy.md) — owner-only reporting; actual call counts; Brisbane days; bounded IP history; resets must not reopen protective limits.
 - [OpenAPI body schemas](openapi-body-schemas.md) — use named request-body components to avoid duplicate exports between generated Zod and DTO modules.

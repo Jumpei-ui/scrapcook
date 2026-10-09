@@ -7,7 +7,7 @@ Keep the usage page unlinked from the public app and return 404 for unauthorized
 
 **Why:** The user explicitly requested a private owner-only page that normal users cannot discover through navigation.
 
-**How to apply:** Protect the HTML, usage data, and reset operation on the server. Do not expose counts or IP history through normal recipe responses.
+**How to apply:** Protect the HTML, usage data, and reset operation on the server. Do not expose counts or IP history through normal recipe responses, including shared-usage response headers.
 
 Count actual provider-call attempts, including retries; cached generation requests must not increase provider counters.
 
