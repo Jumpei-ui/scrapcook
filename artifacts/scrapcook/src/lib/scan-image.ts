@@ -51,7 +51,27 @@ export async function compressImage(file: File): Promise<string> {
   }
 }
 
-export async function scanIngredients(image: string, mode: "fridge" | "pantry", signal: AbortSignal): Promise<string[]> {
+export type ScanItem = { name: string; confidence: "high" | "medium" | "low"; location: string };
+export type ScanResult = { items: ScanItem[]; imageQuality: "clear" | "dark" | "blurry" | "dark_and_blurry" };
+
+const bad = () => new ScanError("Unexpected response from the scanner. Please try again.");
+
+export function parseScanResult(body: unknown): ScanResult {
+  if (!body || typeof body !== "object" || Array.isArray(body)) throw bad();
+  const b = body as { items?: unknown; imageQuality?: unknown };
+  if (!Array.isArray(b.items)) throw bad();
+  const q = b.imageQuality ?? "clear";
+  if (q !== "clear" && q !== "dark" && q !== "blurry" && q !== "dark_and_blurry") throw bad();
+  const items = b.items.map((x): ScanItem => {
+    const o = x as Partial<ScanItem> | null;
+    if (!o || typeof o.name !== "string" || o.name.length > 30 || typeof o.location !== "string" || o.location.length > 80
+      || (o.confidence !== "high" && o.confidence !== "medium" && o.confidence !== "low")) throw bad();
+    return { name: o.name, confidence: o.confidence, location: o.location };
+  });
+  return { items, imageQuality: q };
+}
+
+export async function scanIngredients(image: string, mode: "fridge" | "pantry", signal: AbortSignal): Promise<ScanResult> {
   const base = import.meta.env.BASE_URL.replace(/\/$/, "");
   let res: Response;
   try {
@@ -74,6 +94,5 @@ export async function scanIngredients(image: string, mode: "fridge" | "pantry", 
     err.paused = !!b.paused;
     throw err;
   }
-  if (!Array.isArray(body)) throw new ScanError("Unexpected response from the scanner. Please try again.");
-  return body.filter((x): x is string => typeof x === "string");
+  return parseScanResult(body);
 }

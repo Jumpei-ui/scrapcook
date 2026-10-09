@@ -15,6 +15,12 @@ Process scan photos transiently; keep ingredient names, not uploaded photo archi
 
 **How to apply:** Disclose that identification sends the selected photo to Gemini. Do not log, persist or cache photo payloads. Preserve the existing editable ingredient chips so users can correct uncertain AI detections.
 
+Scan detections require user confirmation before changing the ingredient list; low-confidence guesses start unchecked.
+
+**Why:** The user explicitly replaced automatic merging to prevent uncertain detections such as “maybe yogurt” being added when the item is actually mayo.
+
+**How to apply:** Let users toggle and rename detections before merging selected names. Cancel or retake must not alter ingredients. Generate confidence and image-quality warnings in the original scan call, never through extra paid review calls. Keep review-specific presentation local so existing ingredient-chip removal controls and styling stay unchanged.
+
 Use a low-cost multimodal Flash-Lite model for vision scanning independently of the recipe-generation model.
 
 **Why:** The requested Gemini 1.5 Flash was retired. A supported inexpensive vision model preserves the cost goal without changing existing recipe generation.

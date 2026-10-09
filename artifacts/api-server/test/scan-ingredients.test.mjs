@@ -11,13 +11,19 @@ const require = createRequire(import.meta.url);
 const dbRequire = createRequire(new URL("../../../lib/db/package.json", import.meta.url));
 const { Pool } = dbRequire("pg");
 
-test("vision scans use private credentials, shared atomic limits and validated arrays", async t => {
+test("vision scans use private credentials, shared atomic limits and validated review results", async t => {
   const schema = `scan_test_${randomUUID().replaceAll("-", "")}`;
   const admin = new Pool({ connectionString: process.env.DATABASE_URL });
   const pool = new Pool({ connectionString: process.env.DATABASE_URL, options: `-c search_path=${schema}` });
   const previous = { secret: process.env.SESSION_SECRET, key: process.env.GEMINI_API_KEY, legacyKey: process.env.GEMINI_KEY };
   const originalFetch = globalThis.fetch;
-  let failStorage = false, failProvider = false, output = [" MILK ", "milk", "eggs"];
+  let failStorage = false, failProvider = false, output = {
+    items: [
+      { name: " MILK ", confidence: "high", location: "top shelf" },
+      { name: "milk", confidence: "medium", location: "door" },
+      { name: "eggs", confidence: "high", location: "door" },
+    ], imageQuality: "clear",
+  };
   const calls = [];
   const servers = [];
   try {
@@ -62,10 +68,15 @@ test("vision scans use private credentials, shared atomic limits and validated a
         body: JSON.stringify(body),
       });
     }
-    await t.test("returns plain normalized deduplicated ingredients and correct vision request", async () => {
+    await t.test("returns normalized review items, conservative confidence, and correct vision request", async () => {
       const response = await post();
       assert.equal(response.status, 200);
-      assert.deepEqual(await response.json(), ["milk", "eggs"]);
+      assert.deepEqual(await response.json(), {
+        items: [
+          { name: "milk", confidence: "medium", location: "door" },
+          { name: "eggs", confidence: "high", location: "door" },
+        ], imageQuality: "clear",
+      });
       assert.equal(response.headers.get("cache-control"), "no-store");
       const call = calls.at(-1), body = JSON.parse(call.options.body);
       assert.match(call.url, /gemini-3\.1-flash-lite:generateContent$/);
@@ -73,6 +84,8 @@ test("vision scans use private credentials, shared atomic limits and validated a
       assert.equal(call.options.headers["x-goog-api-key"], "scan-fixture-only-key");
       assert.match(body.contents[0].parts[0].text, /FRIDGE.*photo/s);
       assert.match(body.contents[0].parts[0].text, /perishables/);
+      assert.match(body.contents[0].parts[0].text, /Confidence high if very clear, medium if blurry, low if guess/);
+      assert.equal(body.generationConfig.responseJsonSchema.properties.items.maxItems, 15);
       assert.equal(body.contents[0].parts[1].inlineData.mimeType, "image/jpeg");
       const data = await pool.query("SELECT gemini FROM scrapcook_recipe_usage");
       assert.equal(data.rows[0].gemini, 1);
@@ -89,14 +102,15 @@ test("vision scans use private credentials, shared atomic limits and validated a
       const rows = await pool.query("SELECT client_hash FROM recipe_rate_limits");
       assert.ok(rows.rows.every(row => /^[a-f0-9]{64}$/.test(row.client_hash)));
     });
-    await t.test("invalid input never dispatches; no ingredients is an empty array", async () => {
+    await t.test("invalid input never dispatches; empty scans retain photo quality", async () => {
       const before = calls.length;
       for (const body of [{ image, mode: "oven" }, { image: "data:image/svg+xml;base64,QQ==", mode: "fridge" },
         { image: "data:image/jpeg;base64,QQ==", mode: "fridge" }, { mode: "pantry" }]) {
         assert.equal((await post(body)).status, 400);
       }
       assert.equal(calls.length, before);
-      output = []; assert.deepEqual(await (await post(undefined, "192.0.2.3")).json(), []);
+      output = { items: [], imageQuality: "blurry" };
+      assert.deepEqual(await (await post(undefined, "192.0.2.3")).json(), output);
     });
     await t.test("provider failures are counted once, not retried, and have sanitized errors", async () => {
       failProvider = true;
@@ -108,6 +122,19 @@ test("vision scans use private credentials, shared atomic limits and validated a
       failProvider = false;
       output = { title: "not an ingredient array" };
       assert.equal((await post(undefined, "192.0.2.4")).status, 502);
+    });
+    await t.test("rejects invalid confidence and oversized item lists; defaults missing quality", async () => {
+      output = { items: [{ name: "milk", confidence: "certain", location: "" }], imageQuality: "clear" };
+      assert.equal((await post(undefined, "192.0.2.7")).status, 502);
+      output = { items: Array.from({ length: 16 }, () => ({ name: "milk", confidence: "high", location: "" })), imageQuality: "clear" };
+      assert.equal((await post(undefined, "192.0.2.7")).status, 502);
+      output = ["milk"];
+      assert.equal((await post(undefined, "192.0.2.7")).status, 502);
+      output = { items: [{ name: "yogurt", confidence: "low", location: "bottom shelf" }] };
+      const before = calls.length;
+      const response = await post(undefined, "192.0.2.7");
+      assert.equal(calls.length, before + 1);
+      assert.deepEqual(await response.json(), { ...output, imageQuality: "clear" });
     });
     await t.test("store failures and shared pause stop scans before provider dispatch", async () => {
       const before = calls.length;
@@ -123,7 +150,7 @@ test("vision scans use private credentials, shared atomic limits and validated a
     await t.test("the rolling hour expires across instances", async () => {
       await pool.query("UPDATE scrapcook_provider_budget SET spoon_calls=0");
       await pool.query("UPDATE recipe_rate_limits SET request_times=ARRAY[now()-interval '61 minutes'], updated_at=now()-interval '61 minutes'");
-      output = ["pasta"];
+      output = { items: [{ name: "pasta", confidence: "high", location: "middle shelf" }], imageQuality: "clear" };
       assert.equal((await post({ image, mode: "pantry" }, "192.0.2.2", origins[1])).status, 200);
     });
     await t.test("existing GEMINI_KEY is supported; missing keys never dispatch", async () => {

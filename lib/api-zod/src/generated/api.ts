@@ -22,12 +22,22 @@ export const ScanIngredientsBody = zod.object({
   "mode": zod.enum(['fridge', 'pantry'])
 })
 
-export const scanIngredientsResponseMax = 30;
+export const scanIngredientsResponseItemsItemNameMax = 30;
 
+export const scanIngredientsResponseItemsItemLocationMax = 80;
 
+export const scanIngredientsResponseItemsMax = 15;
 
-export const ScanIngredientsResponseItem = zod.string().min(1).max(scanIngredientsResponseMax)
-export const ScanIngredientsResponse = zod.array(ScanIngredientsResponseItem).max(15)
+export const scanIngredientsResponseImageQualityDefault = `clear`;
+
+export const ScanIngredientsResponse = zod.object({
+  "items": zod.array(zod.object({
+  "name": zod.string().min(1).max(scanIngredientsResponseItemsItemNameMax),
+  "confidence": zod.enum(['high', 'medium', 'low']),
+  "location": zod.string().max(scanIngredientsResponseItemsItemLocationMax)
+})).max(scanIngredientsResponseItemsMax),
+  "imageQuality": zod.enum(['clear', 'dark', 'blurry', 'dark_and_blurry']).default(scanIngredientsResponseImageQualityDefault)
+})
 
 
 /**

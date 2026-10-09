@@ -5,10 +5,11 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { ScannedIngredientItem } from './scannedIngredientItem';
+import type { ScannedIngredientsImageQuality } from './scannedIngredientsImageQuality';
 
-/**
- * @maxItems 15
- * @items.minLength 1
- * @items.maxLength 30
- */
-export type ScannedIngredients = string[];
+export interface ScannedIngredients {
+  /** @maxItems 15 */
+  items: ScannedIngredientItem[];
+  imageQuality: ScannedIngredientsImageQuality;
+}

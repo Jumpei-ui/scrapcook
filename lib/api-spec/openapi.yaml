@@ -28,7 +28,7 @@ paths:
               $ref: "#/components/schemas/IngredientScanInput"
       responses:
         "200":
-          description: Up to fifteen visible ingredients, without duplicates
+          description: Up to fifteen detected items for user confirmation, with confidence and photo quality
           content:
             application/json:
               schema:
@@ -496,13 +496,32 @@ components:
           type: string
           enum: [fridge, pantry]
     ScannedIngredients:
-      type: array
-      maxItems: 15
-      uniqueItems: true
-      items:
-        type: string
-        minLength: 1
-        maxLength: 30
+      type: object
+      required: [items, imageQuality]
+      properties:
+        items:
+          type: array
+          maxItems: 15
+          items:
+            $ref: "#/components/schemas/ScannedIngredientItem"
+        imageQuality:
+          type: string
+          enum: [clear, dark, blurry, dark_and_blurry]
+          default: clear
+    ScannedIngredientItem:
+      type: object
+      required: [name, confidence, location]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 30
+        confidence:
+          type: string
+          enum: [high, medium, low]
+        location:
+          type: string
+          maxLength: 80
     PrivateAdminLoginInput:
       type: object
       required: [password]

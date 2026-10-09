@@ -23,12 +23,41 @@ export interface IngredientScanInput {
   mode: IngredientScanInputMode;
 }
 
-/**
- * @maxItems 15
- * @items.minLength 1
- * @items.maxLength 30
- */
-export type ScannedIngredients = string[];
+export type ScannedIngredientsImageQuality = typeof ScannedIngredientsImageQuality[keyof typeof ScannedIngredientsImageQuality];
+
+
+export const ScannedIngredientsImageQuality = {
+  clear: 'clear',
+  dark: 'dark',
+  blurry: 'blurry',
+  dark_and_blurry: 'dark_and_blurry',
+} as const;
+
+export type ScannedIngredientItemConfidence = typeof ScannedIngredientItemConfidence[keyof typeof ScannedIngredientItemConfidence];
+
+
+export const ScannedIngredientItemConfidence = {
+  high: 'high',
+  medium: 'medium',
+  low: 'low',
+} as const;
+
+export interface ScannedIngredientItem {
+  /**
+     * @minLength 1
+     * @maxLength 30
+     */
+  name: string;
+  confidence: ScannedIngredientItemConfidence;
+  /** @maxLength 80 */
+  location: string;
+}
+
+export interface ScannedIngredients {
+  /** @maxItems 15 */
+  items: ScannedIngredientItem[];
+  imageQuality: ScannedIngredientsImageQuality;
+}
 
 export interface PrivateAdminLoginInput {
   password: string;
