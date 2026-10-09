@@ -116,6 +116,10 @@ export const UpdateScrapCookSessionResponse = zod.object({
  * block generation before any paid provider calls.
  * @summary Find up to 50 recipes using ingredients and cooking preferences
  */
+export const generateScrapCookRecipesBodyUserSpoonKeyMax = 512;
+
+export const generateScrapCookRecipesBodyUserGemKeyMax = 512;
+
 export const generateScrapCookRecipesBodyIngredientsItemMax = 60;
 
 export const generateScrapCookRecipesBodyIngredientsMin = 3;
@@ -126,6 +130,8 @@ export const generateScrapCookRecipesBodySnackModeDefault = false;
 export const generateScrapCookRecipesBodyShowNutritionDefault = true;
 
 export const GenerateScrapCookRecipesBody = zod.object({
+  "userSpoonKey": zod.string().min(1).max(generateScrapCookRecipesBodyUserSpoonKeyMax).optional().describe('Personal key; actually used instead of the shared key'),
+  "userGemKey": zod.string().min(1).max(generateScrapCookRecipesBodyUserGemKeyMax).optional().describe('Optional personal Gemini key, only with a personal Spoonacular key'),
   "ingredients": zod.array(zod.string().max(generateScrapCookRecipesBodyIngredientsItemMax)).min(generateScrapCookRecipesBodyIngredientsMin).max(generateScrapCookRecipesBodyIngredientsMax),
   "preferences": zod.object({
   "experience": zod.enum(['beginner', 'intermediate', 'pro']),
@@ -168,6 +174,10 @@ export const GenerateScrapCookRecipesResponse = zod.object({
 /**
  * @summary Compatibility alias for recipe generation
  */
+export const generateScrapCookRecipesAliasBodyUserSpoonKeyMax = 512;
+
+export const generateScrapCookRecipesAliasBodyUserGemKeyMax = 512;
+
 export const generateScrapCookRecipesAliasBodyIngredientsItemMax = 60;
 
 export const generateScrapCookRecipesAliasBodyIngredientsMin = 3;
@@ -178,6 +188,8 @@ export const generateScrapCookRecipesAliasBodySnackModeDefault = false;
 export const generateScrapCookRecipesAliasBodyShowNutritionDefault = true;
 
 export const GenerateScrapCookRecipesAliasBody = zod.object({
+  "userSpoonKey": zod.string().min(1).max(generateScrapCookRecipesAliasBodyUserSpoonKeyMax).optional().describe('Personal key; actually used instead of the shared key'),
+  "userGemKey": zod.string().min(1).max(generateScrapCookRecipesAliasBodyUserGemKeyMax).optional().describe('Optional personal Gemini key, only with a personal Spoonacular key'),
   "ingredients": zod.array(zod.string().max(generateScrapCookRecipesAliasBodyIngredientsItemMax)).min(generateScrapCookRecipesAliasBodyIngredientsMin).max(generateScrapCookRecipesAliasBodyIngredientsMax),
   "preferences": zod.object({
   "experience": zod.enum(['beginner', 'intermediate', 'pro']),
@@ -218,6 +230,56 @@ export const GenerateScrapCookRecipesAliasResponse = zod.object({
 
 
 /**
+ * @summary Public availability without private counters
+ */
+export const GetRecipeAvailabilityResponse = zod.object({
+  "paused": zod.boolean(),
+  "message": zod.string(),
+  "resetTime": zod.string(),
+  "resumesAt": zod.coerce.date()
+})
+
+
+export const ResumePrivateRecipesHeader = zod.object({
+  "X-Admin-CSRF": zod.string()
+})
+
+export const ResumePrivateRecipesBody = zod.object({
+  "acceptCharges": zod.literal(true)
+})
+
+export const resumePrivateRecipesResponseRecentRequestsMax = 20;
+
+
+
+export const ResumePrivateRecipesResponse = zod.object({
+  "pause": zod.object({
+  "paused": zod.boolean(),
+  "message": zod.string(),
+  "resetTime": zod.string(),
+  "resumesAt": zod.coerce.date()
+}).and(zod.object({
+  "pausedAt": zod.coerce.date().nullable(),
+  "forceResumed": zod.boolean(),
+  "spoonCalls": zod.number().int(),
+  "spoonLimit": zod.number().int()
+})),
+  "date": zod.string(),
+  "spoon": zod.number().int(),
+  "gemini": zod.number().int(),
+  "totalRequests": zod.number().int(),
+  "recentRequests": zod.array(zod.object({
+  "ip": zod.string(),
+  "timestamp": zod.coerce.date()
+})).max(resumePrivateRecipesResponseRecentRequestsMax),
+  "limits": zod.object({
+  "spoon": zod.number().int(),
+  "gemini": zod.number().int()
+})
+})
+
+
+/**
  * @summary Exchange the owner password for an HttpOnly admin session
  */
 export const LoginPrivateRecipeAdminBody = zod.object({
@@ -235,6 +297,17 @@ export const getPrivateRecipeUsageResponseRecentRequestsMax = 20;
 
 
 export const GetPrivateRecipeUsageResponse = zod.object({
+  "pause": zod.object({
+  "paused": zod.boolean(),
+  "message": zod.string(),
+  "resetTime": zod.string(),
+  "resumesAt": zod.coerce.date()
+}).and(zod.object({
+  "pausedAt": zod.coerce.date().nullable(),
+  "forceResumed": zod.boolean(),
+  "spoonCalls": zod.number().int(),
+  "spoonLimit": zod.number().int()
+})),
   "date": zod.string(),
   "spoon": zod.number().int(),
   "gemini": zod.number().int(),
@@ -262,6 +335,17 @@ export const resetPrivateRecipeUsageResponseRecentRequestsMax = 20;
 
 
 export const ResetPrivateRecipeUsageResponse = zod.object({
+  "pause": zod.object({
+  "paused": zod.boolean(),
+  "message": zod.string(),
+  "resetTime": zod.string(),
+  "resumesAt": zod.coerce.date()
+}).and(zod.object({
+  "pausedAt": zod.coerce.date().nullable(),
+  "forceResumed": zod.boolean(),
+  "spoonCalls": zod.number().int(),
+  "spoonLimit": zod.number().int()
+})),
   "date": zod.string(),
   "spoon": zod.number().int(),
   "gemini": zod.number().int(),

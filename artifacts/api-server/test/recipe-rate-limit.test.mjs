@@ -6,6 +6,7 @@ import { once } from "node:events";
 import { pathToFileURL } from "node:url";
 import test from "node:test";
 import express from "express";
+import cookieParser from "cookie-parser";
 import { build } from "esbuild";
 
 const require = createRequire(import.meta.url);
@@ -26,14 +27,17 @@ test("shared recipe limits", async (t) => {
     limit: process.env.RECIPE_DAILY_LIMIT,
     secret: process.env.SESSION_SECRET,
     port: process.env.SCRAPCOOK_PY_PORT,
+    password: process.env.ADMIN_PASSWORD,
   };
   let providerCalls = 0;
   let providerFailure = false;
   let failStorage = false;
   let failDaily = false;
+  let lastProviderHeaders;
   const servers = [];
   const upstream = createServer((_req, res) => {
     providerCalls++;
+    lastProviderHeaders = _req.headers;
     res.statusCode = providerFailure ? 502 : 200;
     res.setHeader("Content-Type", "application/json");
     res.end('{"recipes":[]}');
@@ -45,6 +49,7 @@ test("shared recipe limits", async (t) => {
     await once(upstream, "listening");
     process.env.SCRAPCOOK_PY_PORT = String(upstream.address().port);
     process.env.SESSION_SECRET = "integration-test-only";
+    process.env.ADMIN_PASSWORD = "integration-owner-fixture-only";
     process.env.RECIPE_DAILY_LIMIT = "3";
     globalThis.__recipeLimitTestPool = {
       query: (...args) => {
@@ -55,7 +60,12 @@ test("shared recipe limits", async (t) => {
       },
     };
     const compiled = await build({
-      entryPoints: [new URL("../src/routes/scrapcook.ts", import.meta.url).pathname],
+      stdin: {
+        contents: `export {default} from "./src/routes/scrapcook";
+          export {default as adminRouter} from "./src/routes/admin";
+          export * from "./src/lib/recipe-pause";`,
+        resolveDir: new URL("..", import.meta.url).pathname, loader: "ts",
+      },
       bundle: true, platform: "node", format: "esm", write: false,
       external: ["express"],
       plugins: [{
@@ -74,15 +84,20 @@ test("shared recipe limits", async (t) => {
     const code = compiled.outputFiles[0].text.replaceAll(
       '"express"', JSON.stringify(pathToFileURL(require.resolve("express")).href),
     );
+    let budget;
     async function instance(id) {
-      const { default: router } = await import(
+      const module = await import(
         `data:text/javascript;base64,${Buffer.from(`${code}\n// instance ${id}`).toString("base64")}`
       );
+      budget ??= module;
+      const { default: router, adminRouter } = module;
       const app = express();
       app.set("trust proxy", 1);
       app.use(express.json());
+      app.use(cookieParser(process.env.SESSION_SECRET));
       app.use((req, _res, next) => { req.log = { error() {} }; next(); });
       app.use("/api", router);
+      app.use(adminRouter);
       const server = app.listen(0, "127.0.0.1");
       servers.push(server);
       await once(server, "listening");
@@ -182,6 +197,88 @@ test("shared recipe limits", async (t) => {
       assert.equal(providerCalls, 20);
       assert.equal((await pool.query("SELECT used FROM recipe_daily_usage")).rows[0].used, 20);
     });
+    await t.test("atomic provider reservations stop exactly at150 across replicas", async () => {
+      await pool.query("UPDATE scrapcook_provider_budget SET spoon_calls=149, paused_at=NULL, force_resumed=false");
+      const allowed = await Promise.all(Array.from({ length: 30 }, () => budget.reserveProviderAllowance("spoon")));
+      assert.equal(allowed.filter(Boolean).length, 1);
+      const state = await budget.getRecipePauseState();
+      assert.equal(state.spoonCalls, 150);
+      assert.equal(state.paused, true);
+      assert.ok(state.pausedAt);
+      assert.equal(await budget.reserveProviderAllowance("gemini"), false);
+    });
+    await t.test("pause is checked before every generation alias and public status hides counts", async () => {
+      await reset();
+      for (const path of ["/api/recipes", "/api/getRecipes", "/api/scrapcook/recipes"]) {
+        const response = await request(first, path);
+        assert.equal(response.status, 429);
+        const data = await response.json();
+        assert.equal(data.paused, true);
+        assert.equal(data.message, "Daily limit reached. Come back tomorrow!");
+        assert.equal(data.resetTime, "midnight UTC");
+        assert.ok(Date.parse(data.resumesAt) > Date.now());
+        assert.equal(data.spoonCalls, undefined);
+      }
+      const status = await (await fetch(first + "/api/recipes/status")).json();
+      assert.equal(status.paused, true);
+      assert.equal(status.spoonCalls, undefined);
+      assert.equal(providerCalls, 0);
+      assert.equal((await pool.query("SELECT * FROM recipe_daily_usage")).rowCount, 0);
+    });
+    await t.test("BYOK uses supplied keys only, bypasses owner caps, and rejects flags/malformed keys", async () => {
+      await reset("0");
+      const response = await fetch(first + "/api/getRecipes", {
+        method: "POST", headers: { "Content-Type": "application/json", "X-Forwarded-For": "192.0.2.40" },
+        body: JSON.stringify({ userSpoonKey: "personal-fixture-only" }),
+      });
+      assert.equal(response.status, 200);
+      assert.equal(lastProviderHeaders["x-personal-spoon-key"], "personal-fixture-only");
+      assert.equal(lastProviderHeaders["x-personal-gemini-key"], "");
+      assert.equal(providerCalls, 1);
+      assert.equal((await pool.query("SELECT * FROM recipe_daily_usage")).rowCount, 0);
+      for (const userSpoonKey of [true, "bad\nkey", ""]) {
+        const invalid = await fetch(first + "/api/getRecipes", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ userSpoonKey }),
+        });
+        assert.equal(invalid.status, 400);
+      }
+      assert.equal((await request()).status, 429);
+      assert.equal(providerCalls, 1);
+    });
+    await t.test("owner reset cannot unpause; resume requires auth, CSRF and charge acceptance", async () => {
+      const login = await fetch(first + "/api/admin/login", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password: "integration-owner-fixture-only" }),
+      });
+      assert.equal(login.status, 204);
+      const cookie = login.headers.getSetCookie().map(value => value.split(";")[0]).join("; ");
+      const html = await (await fetch(first + "/admin", { headers: { Cookie: cookie } })).text();
+      const csrf = JSON.parse(html.match(/const csrfToken=(".*?");/)[1]);
+      const headers = { Cookie: cookie, "Content-Type": "application/json", "X-Admin-CSRF": csrf };
+      const resetResponse = await fetch(first + "/api/admin/reset", { method: "POST", headers });
+      assert.equal(resetResponse.status, 200);
+      assert.equal((await resetResponse.json()).pause.paused, true);
+      assert.equal((await fetch(first + "/api/admin/resume", { method: "POST" })).status, 404);
+      assert.equal((await fetch(first + "/api/admin/resume", { method: "POST", headers: { Cookie: cookie } })).status, 404);
+      assert.equal((await fetch(first + "/api/admin/resume", { method: "POST", headers, body: "{}" })).status, 400);
+      const resumed = await fetch(first + "/api/admin/resume", {
+        method: "POST", headers, body: JSON.stringify({ acceptCharges: true }),
+      });
+      assert.equal(resumed.status, 200);
+      assert.equal((await resumed.json()).pause.paused, false);
+      assert.equal(await budget.reserveProviderAllowance("spoon"), true);
+    });
+    await t.test("UTC rollover removes pause and force-resume even under a non-UTC DB timezone", async () => {
+      await pool.query(`UPDATE scrapcook_provider_budget SET usage_date =
+        (statement_timestamp() AT TIME ZONE 'UTC')::date - 1`);
+      const state = await budget.getRecipePauseState();
+      assert.equal(state.spoonCalls, 0);
+      assert.equal(state.paused, false);
+      assert.equal(state.forceResumed, false);
+      // A stale resume click after midnight must not disable the new day's ceiling.
+      assert.equal((await budget.forceResumeRecipes()).forceResumed, false);
+    });
   } finally {
     for (const server of servers) await new Promise((resolve) => server.close(resolve));
     await pool.end();
@@ -192,6 +289,7 @@ test("shared recipe limits", async (t) => {
       RECIPE_DAILY_LIMIT: previous.limit,
       SESSION_SECRET: previous.secret,
       SCRAPCOOK_PY_PORT: previous.port,
+      ADMIN_PASSWORD: previous.password,
     })) {
       if (value === undefined) delete process.env[key];
       else process.env[key] = value;

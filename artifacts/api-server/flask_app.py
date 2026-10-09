@@ -12,7 +12,7 @@ from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 
-from flask import Flask, jsonify, request, session
+from flask import Flask, has_request_context, jsonify, request, session
 from werkzeug.middleware.proxy_fix import ProxyFix
 
 
@@ -309,7 +309,25 @@ def difficulty_for(information):
     return "Intermediate"
 
 
-def record_provider_usage(provider):
+class RecipePaused(Exception):
+    def __init__(self, resumes_at):
+        self.resumes_at = resumes_at
+
+
+@app.errorhandler(RecipePaused)
+def paused_response(error):
+    return jsonify({
+        "paused": True,
+        "message": "Daily limit reached. Come back tomorrow!",
+        "resetTime": "midnight UTC",
+        "resumesAt": error.resumes_at,
+    }), 429
+
+
+def record_provider_usage(provider, api_key=None, personal=False):
+    owner_key = SPOONACULAR_API_KEY if provider == "spoon" else GEMINI_KEY
+    if personal or (api_key is not None and api_key != owner_key):
+        return  # Personal calls never consume the shared owner's allowance.
     token = hmac.new(
         os.environ["SESSION_SECRET"].encode(),
         b"scrapcook-provider-usage",
@@ -325,7 +343,13 @@ def record_provider_usage(provider):
         with urlopen(usage_request, timeout=10) as response:
             if response.status != 204:
                 raise ValueError("Provider usage tracking is unavailable.")
-    except (HTTPError, URLError, TimeoutError):
+    except HTTPError as error:
+        if error.code == 429:
+            data = json.loads(error.read().decode())
+            if data.get("paused"):
+                raise RecipePaused(data.get("resumesAt")) from None
+        raise ValueError("Provider usage tracking is unavailable.") from None
+    except (URLError, TimeoutError):
         raise ValueError("Provider usage tracking is unavailable.") from None
 
 
@@ -334,7 +358,9 @@ def spoonacular_get(path, params=None, api_key=None):
     query["apiKey"] = api_key or SPOONACULAR_API_KEY
     url = f"https://api.spoonacular.com{path}?{urlencode(query)}"
     request_object = Request(url, headers={"Accept": "application/json"})
-    record_provider_usage("spoon")
+    record_provider_usage("spoon", query["apiKey"], personal=(
+        has_request_context() and bool(request.headers.get("x-personal-spoon-key"))
+    ))
     with urlopen(request_object, timeout=20) as response:
         return json.loads(response.read().decode("utf-8"))
 
@@ -532,6 +558,10 @@ def session_real_recipe_details():
     cached = recipe_search_cache_get(session.get("recipeSearchKey"))
     if isinstance(cached, list):
         return cached
+    if str(session.get("recipeSearchKey", "")).startswith("hybrid:"):
+        # Expired hybrid/personal results must be regenerated explicitly, never
+        # restored with the owner's keys after personal credentials are gone.
+        return []
     ingredients = session.get("ingredients", [])
     preferences = normalized_preferences(session.get("preferences"))
     if not SPOONACULAR_API_KEY or not ingredients or not preferences:
@@ -541,7 +571,7 @@ def session_real_recipe_details():
     return filtered_recipe_details(search_data, preferences, include_nutrition=include_nutrition)
 
 
-def gemini_json(api_key, prompt):
+def gemini_json(api_key, prompt, personal=False):
     url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent"
     payload = json.dumps({
         "contents": [{"parts": [{"text": prompt}]}],
@@ -553,7 +583,7 @@ def gemini_json(api_key, prompt):
     )
     for attempt in range(3):
         try:
-            record_provider_usage("gemini")
+            record_provider_usage("gemini", api_key, personal=personal)
             with urlopen(provider_request, timeout=40) as response:
                 result = json.loads(response.read().decode())
             parts = result["candidates"][0]["content"]["parts"]
@@ -639,7 +669,7 @@ def gemini_recipe(data, pantry, source=None, minimum_steps=2):
     }
 
 
-def hybrid_recipes(pantry, preferences, spoonacular_key, gemini_key, snack_mode=False, include_nutrition=True):
+def hybrid_recipes(pantry, preferences, spoonacular_key, gemini_key, snack_mode=False, include_nutrition=True, personal=False):
     if snack_mode:
         snack_preferences = {**preferences, "maxReadyTime": 15}
         sources = []
@@ -673,7 +703,7 @@ def hybrid_recipes(pantry, preferences, spoonacular_key, gemini_key, snack_mode=
                 )
                 try:
                     for attempt in range(3):
-                        data = gemini_json(gemini_key, prompt)
+                        data = gemini_json(gemini_key, prompt, personal=personal)
                         if not isinstance(data, dict):
                             raise ValueError("Invalid snack format.")
                         if len(" ".join(data.get("steps", [])).split()) <= 50:
@@ -721,7 +751,7 @@ def hybrid_recipes(pantry, preferences, spoonacular_key, gemini_key, snack_mode=
             "Return JSON {\"recipes\": [{\"title\": \"\", \"cookTime\": 30, \"servings\": 2, "
             "\"ingredients\": [], \"steps\": []}]}." + output_shape
         )
-        result = gemini_json(gemini_key, prompt)
+        result = gemini_json(gemini_key, prompt, personal=personal)
         recipes = result.get("recipes") if isinstance(result, dict) else result
         if not isinstance(recipes, list) or not recipes:
             raise ValueError("Gemini did not return recipes.")
@@ -750,7 +780,7 @@ def hybrid_recipes(pantry, preferences, spoonacular_key, gemini_key, snack_mode=
                             method="POST",
                             headers={"Content-Type": "application/json", "x-goog-api-key": gemini_key},
                         )
-                        record_provider_usage("gemini")
+                        record_provider_usage("gemini", gemini_key, personal=personal)
                         with urlopen(provider_request, timeout=40) as response:
                             result = json.loads(response.read().decode())
                         text = "".join(
@@ -949,7 +979,10 @@ def generate_recipes():
     show_nutrition = body.get("showNutrition", True)
     if not isinstance(show_nutrition, bool):
         return error_response("Choose whether to show nutrition.", 400)
-    spoonacular_key, gemini_key = SPOONACULAR_API_KEY, GEMINI_KEY
+    personal_spoon_key = request.headers.get("x-personal-spoon-key")
+    spoonacular_key = personal_spoon_key or SPOONACULAR_API_KEY
+    # Do not silently spend shared Gemini credits on a personal-key bypass.
+    gemini_key = request.headers.get("x-personal-gemini-key", "") if personal_spoon_key else GEMINI_KEY
     if not spoonacular_key and not gemini_key:
         return error_response("Recipe service is not configured. The app owner must add server API keys.", 503)
 
@@ -980,6 +1013,7 @@ def generate_recipes():
             details = hybrid_recipes(
                 ingredients, preferences, spoonacular_key, gemini_key, snack_mode,
                 include_nutrition=show_nutrition,
+                personal=bool(personal_spoon_key),
             )
             batch_id = os.urandom(10).hex()
             details = [
@@ -1001,6 +1035,10 @@ def generate_recipes():
                 "demoMode": False,
             }
         )
+    except RecipePaused as error:
+        session.clear()
+        session.update(previous_session)
+        return paused_response(error)
     except (HTTPError, URLError, TimeoutError, KeyError, IndexError, ValueError, TypeError):
         session.clear()
         session.update(previous_session)

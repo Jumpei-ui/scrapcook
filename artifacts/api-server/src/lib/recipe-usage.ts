@@ -1,11 +1,11 @@
 import { pool, type RecipeUsage } from "@workspace/db";
 import { createHmac } from "node:crypto";
 
-const today = "(now() AT TIME ZONE 'Australia/Brisbane')::date";
+const today = "(now() AT TIME ZONE 'UTC')::date";
 let ready: Promise<unknown> | undefined;
 let nextCleanup = 0;
 
-async function ensureStore() {
+export async function ensureUsageStore() {
   ready ??= pool.query(`
     CREATE TABLE IF NOT EXISTS scrapcook_recipe_usage (
       usage_date date PRIMARY KEY,
@@ -35,7 +35,7 @@ async function ensureStore() {
 
 export async function allowAdminSignIn(ip: string | undefined) {
   if (!ip || !process.env.SESSION_SECRET) return false;
-  await ensureStore();
+  await ensureUsageStore();
   const hash = createHmac("sha256", process.env.SESSION_SECRET)
     .update(`scrapcook-admin-auth:${ip}`).digest("hex");
   const result = await pool.query(`
@@ -53,7 +53,7 @@ export async function allowAdminSignIn(ip: string | undefined) {
 }
 
 export async function recordRecipeRequest(ip: string) {
-  await ensureStore();
+  await ensureUsageStore();
   const recent = JSON.stringify([{ ip, timestamp: new Date().toISOString() }]);
   await pool.query(`
     INSERT INTO scrapcook_recipe_usage (usage_date, total_requests, recent_requests)
@@ -70,7 +70,7 @@ export async function recordRecipeRequest(ip: string) {
 }
 
 export async function recordProviderCall(provider: "spoon" | "gemini") {
-  await ensureStore();
+  await ensureUsageStore();
   const column = provider === "spoon" ? "spoon" : "gemini";
   await pool.query(`
     INSERT INTO scrapcook_recipe_usage (usage_date, ${column})
@@ -86,7 +86,7 @@ function displayLimit(value: string | undefined, fallback: number) {
 }
 
 export async function getRecipeUsage() {
-  await ensureStore();
+  await ensureUsageStore();
   const result = await pool.query<RecipeUsage>(`
     SELECT ${today}::text AS "usageDate",
       COALESCE(spoon, 0) AS spoon, COALESCE(gemini, 0) AS gemini,
@@ -110,7 +110,7 @@ export async function getRecipeUsage() {
 }
 
 export async function resetRecipeUsage() {
-  await ensureStore();
+  await ensureUsageStore();
   await pool.query(`
     INSERT INTO scrapcook_recipe_usage (usage_date) VALUES (${today})
     ON CONFLICT (usage_date) DO UPDATE

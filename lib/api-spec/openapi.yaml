@@ -105,7 +105,9 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ApiError"
+                oneOf:
+                  - $ref: "#/components/schemas/ApiError"
+                  - $ref: "#/components/schemas/RecipePauseStatus"
         "503":
           description: Recipe service or limit storage unavailable, or server configuration missing or invalid
           content:
@@ -134,10 +136,64 @@ paths:
           description: Invalid recipe request
         "429":
           description: Recipe usage limit reached
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: "#/components/schemas/RecipePauseStatus"
+                  - $ref: "#/components/schemas/ApiError"
         "502":
           description: Provider failure
         "503":
           description: Service unavailable
+  /recipes/status:
+    get:
+      operationId: getRecipeAvailability
+      tags: [scrapcook]
+      summary: Public availability without private counters
+      responses:
+        "200":
+          description: Current auto-pause and next midnight UTC
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RecipePauseStatus"
+        "503":
+          description: Availability storage unavailable
+  /admin/resume:
+    post:
+      operationId: resumePrivateRecipes
+      tags: [admin]
+      parameters:
+        - in: cookie
+          name: scrapcook_admin
+          required: true
+          schema:
+            type: string
+        - in: header
+          name: X-Admin-CSRF
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RecipeResumeInput"
+      responses:
+        "200":
+          description: Auto-pause disabled for this UTC day; other limits still apply
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PrivateRecipeUsage"
+        "400":
+          description: Acceptance of charges required
+        "404":
+          description: Not found
+        "503":
+          description: Resume unavailable
   /admin/login:
     post:
       operationId: loginPrivateRecipeAdmin
@@ -223,6 +279,12 @@ paths:
       responses:
         "204":
           description: Provider call recorded
+        "429":
+          description: Paid call blocked by auto-pause
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RecipePauseStatus"
         "400":
           description: Invalid provider
         "404":
@@ -407,10 +469,47 @@ components:
         provider:
           type: string
           enum: [spoon, gemini]
+    RecipeResumeInput:
+      type: object
+      required: [acceptCharges]
+      properties:
+        acceptCharges:
+          type: boolean
+          const: true
+    RecipePauseStatus:
+      type: object
+      required: [paused, message, resetTime, resumesAt]
+      properties:
+        paused:
+          type: boolean
+        message:
+          type: string
+        resetTime:
+          type: string
+        resumesAt:
+          type: string
+          format: date-time
+    PrivateRecipePause:
+      allOf:
+        - $ref: "#/components/schemas/RecipePauseStatus"
+        - type: object
+          required: [pausedAt, forceResumed, spoonCalls, spoonLimit]
+          properties:
+            pausedAt:
+              type: ["string", "null"]
+              format: date-time
+            forceResumed:
+              type: boolean
+            spoonCalls:
+              type: integer
+            spoonLimit:
+              type: integer
     PrivateRecipeUsage:
       type: object
-      required: [date, spoon, gemini, totalRequests, recentRequests, limits]
+      required: [date, spoon, gemini, totalRequests, recentRequests, limits, pause]
       properties:
+        pause:
+          $ref: "#/components/schemas/PrivateRecipePause"
         date:
           type: string
         spoon:
@@ -497,6 +596,18 @@ components:
     RecipeGenerationInput:
       type: object
       properties:
+        userSpoonKey:
+          type: string
+          minLength: 1
+          maxLength: 512
+          writeOnly: true
+          description: Personal key; actually used instead of the shared key
+        userGemKey:
+          type: string
+          minLength: 1
+          maxLength: 512
+          writeOnly: true
+          description: Optional personal Gemini key, only with a personal Spoonacular key
         ingredients:
           type: array
           minItems: 3

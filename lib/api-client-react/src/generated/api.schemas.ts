@@ -21,6 +21,26 @@ export interface InternalProviderUsageInput {
   provider: InternalProviderUsageInputProvider;
 }
 
+export const RecipeResumeInputValue = {
+  acceptCharges: true,
+} as const;
+export type RecipeResumeInput = typeof RecipeResumeInputValue;
+
+export interface RecipePauseStatus {
+  paused: boolean;
+  message: string;
+  resetTime: string;
+  resumesAt: string;
+}
+
+export type PrivateRecipePause = RecipePauseStatus & ({
+  /** @nullable */
+  pausedAt: string | null;
+  forceResumed: boolean;
+  spoonCalls: number;
+  spoonLimit: number;
+});
+
 export type PrivateRecipeUsageRecentRequestsItem = {
   ip: string;
   timestamp: string;
@@ -32,6 +52,7 @@ export type PrivateRecipeUsageLimits = {
 };
 
 export interface PrivateRecipeUsage {
+  pause: PrivateRecipePause;
   date: string;
   spoon: number;
   gemini: number;
@@ -125,6 +146,18 @@ export interface ScrapCookSessionInput {
 }
 
 export interface RecipeGenerationInput {
+  /**
+     * Personal key; actually used instead of the shared key
+     * @minLength 1
+     * @maxLength 512
+     */
+  userSpoonKey?: string;
+  /**
+     * Optional personal Gemini key, only with a personal Spoonacular key
+     * @minLength 1
+     * @maxLength 512
+     */
+  userGemKey?: string;
   /**
      * @minItems 3
      * @maxItems 40

@@ -10,6 +10,7 @@ import {
 import type { SavingsComparisonLabel } from "@workspace/api-client-react";
 import { useToast } from "@/hooks/use-toast";
 import { useShowNutrition } from "@/hooks/use-show-nutrition";
+import { getPersonalRecipeKeys } from "@/lib/personal-recipe-keys";
 
 const options: SavingsComparisonLabel[] = ["Takeaway", "Uber Eats", "HelloFresh", "Woolies new shop"];
 const AUD = new Intl.NumberFormat("en-AU", { style: "currency", currency: "AUD", minimumFractionDigits: 2 });
@@ -31,6 +32,7 @@ export default function SettingsPage() {
   const [label, setLabel] = useState<SavingsComparisonLabel>("Takeaway");
   const [cost, setCost] = useState("18.50");
   const [saved, setSaved] = useState(false);
+  const [personalKeys, setPersonalKeys] = useState(getPersonalRecipeKeys);
 
   useEffect(() => {
     if (!dashboard.data?.defaultComparison) return;
@@ -91,6 +93,30 @@ export default function SettingsPage() {
           <div className="sc-save-hero-total"><span>Default benchmark</span><strong>{AUD.format(Number(cost) || 0)}</strong></div>
         </section>
         <div className="sc-settings-grid">
+          <section className="sc-panel">
+            <div className="sc-panel-heading"><div><h2>Your own recipe API keys</h2><p>Optional: keep cooking during a shared-key pause.</p></div></div>
+            <form className="sc-settings-form" onSubmit={(event) => {
+              event.preventDefault();
+              try {
+                for (const [key, value] of Object.entries(personalKeys)) {
+                  if (value.trim()) localStorage.setItem(key, value.trim());
+                  else localStorage.removeItem(key);
+                }
+                toast({ title: "Keys saved" });
+              } catch { toast({ title: "Could not save keys", description: "Browser storage is unavailable.", variant: "destructive" }); }
+            }}>
+              <label className="sc-field">Spoonacular API Key
+                <input id="user-spoon-key" type="password" autoComplete="off" maxLength={512}
+                  value={personalKeys.userSpoonKey} onChange={event => setPersonalKeys({ ...personalKeys, userSpoonKey: event.target.value })} />
+              </label>
+              <label className="sc-field">Gemini API Key (optional)
+                <input id="user-gem-key" type="password" autoComplete="off" maxLength={512}
+                  value={personalKeys.userGemKey} onChange={event => setPersonalKeys({ ...personalKeys, userGemKey: event.target.value })} />
+              </label>
+              <p className="sc-hint">Personal requests use only your keys, never the shared keys. Stored in this browser's localStorage—not encrypted. Only use a trusted browser. Clear both fields and save to remove them.</p>
+              <button type="submit" className="sc-button sc-button-primary" disabled={!personalKeys.userSpoonKey.trim() && !!personalKeys.userGemKey.trim()}>Save API keys</button>
+            </form>
+          </section>
           <section className="sc-panel">
             <div className="sc-panel-heading"><div><h2>Default comparison</h2><p>Used whenever you record a cooked meal.</p></div></div>
             {dashboard.isLoading ? (

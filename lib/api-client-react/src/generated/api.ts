@@ -32,7 +32,9 @@ import type {
   RecipeCostEstimateInput,
   RecipeDetail,
   RecipeGenerationInput,
+  RecipePauseStatus,
   RecipeResults,
+  RecipeResumeInput,
   SavingsComparison,
   SavingsDashboard,
   SavingsSettingsInput,
@@ -358,7 +360,7 @@ return customFetch<RecipeResults>(getGenerateScrapCookRecipesUrl(),
 
 export const getGenerateScrapCookRecipesMutationKey = () => ['generateScrapCookRecipes'] as const;
 
-export const getGenerateScrapCookRecipesMutationOptions = <TError = ErrorType<ApiError>,
+export const getGenerateScrapCookRecipesMutationOptions = <TError = ErrorType<ApiError | RecipePauseStatus>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof generateScrapCookRecipes>>, TError,GenerateScrapCookRecipesMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof generateScrapCookRecipes>>, TError,GenerateScrapCookRecipesMutationVariables, TContext> => {
 
@@ -387,13 +389,13 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
     export type GenerateScrapCookRecipesMutationResult = NonNullable<Awaited<ReturnType<typeof generateScrapCookRecipes>>>
     export type GenerateScrapCookRecipesMutationBody = BodyType<RecipeGenerationInput>
-    export type GenerateScrapCookRecipesMutationError = ErrorType<ApiError>
+    export type GenerateScrapCookRecipesMutationError = ErrorType<ApiError | RecipePauseStatus>
     export type GenerateScrapCookRecipesMutationVariables = {data: BodyType<RecipeGenerationInput>}
 
     /**
  * @summary Find up to 50 recipes using ingredients and cooking preferences
  */
-export const useGenerateScrapCookRecipes = <TError = ErrorType<ApiError>,
+export const useGenerateScrapCookRecipes = <TError = ErrorType<ApiError | RecipePauseStatus>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof generateScrapCookRecipes>>, TError,GenerateScrapCookRecipesMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
  ): UseMutationResult<
         Awaited<ReturnType<typeof generateScrapCookRecipes>>,
@@ -446,7 +448,7 @@ return customFetch<RecipeResults>(getGenerateScrapCookRecipesAliasUrl(),
 
 export const getGenerateScrapCookRecipesAliasMutationKey = () => ['generateScrapCookRecipesAlias'] as const;
 
-export const getGenerateScrapCookRecipesAliasMutationOptions = <TError = ErrorType<void>,
+export const getGenerateScrapCookRecipesAliasMutationOptions = <TError = ErrorType<void | RecipePauseStatus | ApiError>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof generateScrapCookRecipesAlias>>, TError,GenerateScrapCookRecipesAliasMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof generateScrapCookRecipesAlias>>, TError,GenerateScrapCookRecipesAliasMutationVariables, TContext> => {
 
@@ -475,13 +477,13 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
     export type GenerateScrapCookRecipesAliasMutationResult = NonNullable<Awaited<ReturnType<typeof generateScrapCookRecipesAlias>>>
     export type GenerateScrapCookRecipesAliasMutationBody = BodyType<RecipeGenerationInput>
-    export type GenerateScrapCookRecipesAliasMutationError = ErrorType<void>
+    export type GenerateScrapCookRecipesAliasMutationError = ErrorType<void | RecipePauseStatus | ApiError>
     export type GenerateScrapCookRecipesAliasMutationVariables = {data: BodyType<RecipeGenerationInput>}
 
     /**
  * @summary Compatibility alias for recipe generation
  */
-export const useGenerateScrapCookRecipesAlias = <TError = ErrorType<void>,
+export const useGenerateScrapCookRecipesAlias = <TError = ErrorType<void | RecipePauseStatus | ApiError>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof generateScrapCookRecipesAlias>>, TError,GenerateScrapCookRecipesAliasMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
  ): UseMutationResult<
         Awaited<ReturnType<typeof generateScrapCookRecipesAlias>>,
@@ -490,6 +492,165 @@ export const useGenerateScrapCookRecipesAlias = <TError = ErrorType<void>,
         TContext
       > => {
       return useMutation(getGenerateScrapCookRecipesAliasMutationOptions(options));
+    }
+
+export const getGetRecipeAvailabilityUrl = () => {
+
+
+
+
+  return `/api/recipes/status`
+}
+
+/**
+ * @summary Public availability without private counters
+ */
+export const getRecipeAvailability = async ( options?: Parameters<typeof customFetch>[1]): Promise<RecipePauseStatus> => {
+
+  return customFetch<RecipePauseStatus>(getGetRecipeAvailabilityUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetRecipeAvailabilityQueryKey = () => {
+    return [
+    `/api/recipes/status`
+    ] as const;
+    }
+
+
+export const getGetRecipeAvailabilityQueryOptions = <TData = Awaited<ReturnType<typeof getRecipeAvailability>>, TError = ErrorType<void>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getRecipeAvailability>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetRecipeAvailabilityQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getRecipeAvailability>>> = ({ signal }) => getRecipeAvailability({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getRecipeAvailability>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetRecipeAvailabilityQueryResult = NonNullable<Awaited<ReturnType<typeof getRecipeAvailability>>>
+export type GetRecipeAvailabilityQueryError = ErrorType<void>
+
+
+/**
+ * @summary Public availability without private counters
+ */
+
+export function useGetRecipeAvailability<TData = Awaited<ReturnType<typeof getRecipeAvailability>>, TError = ErrorType<void>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getRecipeAvailability>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetRecipeAvailabilityQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getResumePrivateRecipesUrl = () => {
+
+
+
+
+  return `/api/admin/resume`
+}
+
+export const resumePrivateRecipes = async (recipeResumeInput: RecipeResumeInput, options?: Parameters<typeof customFetch>[1]): Promise<PrivateRecipeUsage> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<PrivateRecipeUsage>(getResumePrivateRecipesUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(recipeResumeInput)
+  }
+);}
+
+
+
+
+
+export const getResumePrivateRecipesMutationKey = () => ['resumePrivateRecipes'] as const;
+
+export const getResumePrivateRecipesMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof resumePrivateRecipes>>, TError,ResumePrivateRecipesMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof resumePrivateRecipes>>, TError,ResumePrivateRecipesMutationVariables, TContext> => {
+
+const mutationKey = getResumePrivateRecipesMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof resumePrivateRecipes>>, ResumePrivateRecipesMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  resumePrivateRecipes(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ResumePrivateRecipesMutationResult = NonNullable<Awaited<ReturnType<typeof resumePrivateRecipes>>>
+    export type ResumePrivateRecipesMutationBody = BodyType<RecipeResumeInput>
+    export type ResumePrivateRecipesMutationError = ErrorType<void>
+    export type ResumePrivateRecipesMutationVariables = {data: BodyType<RecipeResumeInput>}
+
+    export const useResumePrivateRecipes = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof resumePrivateRecipes>>, TError,ResumePrivateRecipesMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof resumePrivateRecipes>>,
+        TError,
+        ResumePrivateRecipesMutationVariables,
+        TContext
+      > => {
+      return useMutation(getResumePrivateRecipesMutationOptions(options));
     }
 
 export const getLoginPrivateRecipeAdminUrl = () => {
@@ -773,7 +934,7 @@ return customFetch<void>(getRecordInternalProviderUsageUrl(),
 
 export const getRecordInternalProviderUsageMutationKey = () => ['recordInternalProviderUsage'] as const;
 
-export const getRecordInternalProviderUsageMutationOptions = <TError = ErrorType<void>,
+export const getRecordInternalProviderUsageMutationOptions = <TError = ErrorType<void | RecipePauseStatus>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof recordInternalProviderUsage>>, TError,RecordInternalProviderUsageMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof recordInternalProviderUsage>>, TError,RecordInternalProviderUsageMutationVariables, TContext> => {
 
@@ -802,13 +963,13 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
     export type RecordInternalProviderUsageMutationResult = NonNullable<Awaited<ReturnType<typeof recordInternalProviderUsage>>>
     export type RecordInternalProviderUsageMutationBody = BodyType<InternalProviderUsageInput>
-    export type RecordInternalProviderUsageMutationError = ErrorType<void>
+    export type RecordInternalProviderUsageMutationError = ErrorType<void | RecipePauseStatus>
     export type RecordInternalProviderUsageMutationVariables = {data: BodyType<InternalProviderUsageInput>}
 
     /**
  * @summary Authenticated server-to-server provider-call tracking
  */
-export const useRecordInternalProviderUsage = <TError = ErrorType<void>,
+export const useRecordInternalProviderUsage = <TError = ErrorType<void | RecipePauseStatus>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof recordInternalProviderUsage>>, TError,RecordInternalProviderUsageMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
  ): UseMutationResult<
         Awaited<ReturnType<typeof recordInternalProviderUsage>>,

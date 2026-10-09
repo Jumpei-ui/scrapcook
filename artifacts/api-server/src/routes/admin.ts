@@ -2,6 +2,7 @@ import { createHash, createHmac, randomBytes, timingSafeEqual } from "node:crypt
 import { Router, type Request, type Response } from "express";
 import { adminPage } from "../lib/admin-page";
 import { allowAdminSignIn, getRecipeUsage, recordProviderCall, resetRecipeUsage } from "../lib/recipe-usage";
+import { forceResumeRecipes, getRecipePauseState, publicRecipePause, reserveProviderAllowance } from "../lib/recipe-pause";
 
 const router = Router();
 const cookieName = "scrapcook_admin";
@@ -85,7 +86,7 @@ router.get("/api/admin/usage", async (req, res) => {
   if (!authenticated(req)) return notFound(res);
   privateHeaders(res);
   try {
-    res.json(await getRecipeUsage());
+    res.json({ ...await getRecipeUsage(), pause: await getRecipePauseState() });
   } catch {
     req.log.error("Private recipe usage storage is unavailable");
     res.status(503).json({ error: "Usage storage is unavailable." });
@@ -96,10 +97,27 @@ router.post("/api/admin/reset", async (req, res) => {
   if (!authenticated(req) || !matches(req.header("x-admin-csrf"), csrf(req))) return notFound(res);
   privateHeaders(res);
   try {
-    res.json(await resetRecipeUsage());
+    // Initialize the protective ledger before clearing legacy reporting counts.
+    await getRecipePauseState();
+    res.json({ ...await resetRecipeUsage(), pause: await getRecipePauseState() });
   } catch {
     req.log.error("Private recipe usage storage is unavailable");
     res.status(503).json({ error: "Usage storage is unavailable." });
+  }
+});
+
+router.post("/api/admin/resume", async (req, res) => {
+  if (!authenticated(req) || !matches(req.header("x-admin-csrf"), csrf(req))) return notFound(res);
+  privateHeaders(res);
+  if (req.body?.acceptCharges !== true) {
+    res.status(400).json({ error: "Explicit acceptance of possible charges is required." });
+    return;
+  }
+  try {
+    const pause = await forceResumeRecipes();
+    res.json({ ...await getRecipeUsage(), pause });
+  } catch {
+    res.status(503).json({ error: "Could not resume recipes. Please try again." });
   }
 });
 
@@ -113,6 +131,10 @@ router.post("/api/internal/provider-usage", async (req, res) => {
     return;
   }
   try {
+    if (!await reserveProviderAllowance(provider)) {
+      res.status(429).json(publicRecipePause(await getRecipePauseState()));
+      return;
+    }
     await recordProviderCall(provider);
     res.sendStatus(204);
   } catch {

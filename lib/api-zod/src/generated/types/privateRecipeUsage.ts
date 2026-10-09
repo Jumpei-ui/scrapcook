@@ -5,10 +5,12 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { PrivateRecipePause } from './privateRecipePause';
 import type { PrivateRecipeUsageLimits } from './privateRecipeUsageLimits';
 import type { PrivateRecipeUsageRecentRequestsItem } from './privateRecipeUsageRecentRequestsItem';
 
 export interface PrivateRecipeUsage {
+  pause: PrivateRecipePause;
   date: string;
   spoon: number;
   gemini: number;

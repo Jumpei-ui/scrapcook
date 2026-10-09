@@ -74,6 +74,11 @@ export const recipeRateLimit: RequestHandler = async (req, res, next) => {
       return;
     }
     res.setHeader("RateLimit-Remaining", String(limit - result.rows[0].used));
+    // Personal requests pay with personal keys, but still obey the per-IP throttle.
+    if (res.locals.personalProviderKeys) {
+      next();
+      return;
+    }
 
     // Reserve one generation attempt before any provider calls. ON CONFLICT locks
     // today's row, so concurrent requests and replicas cannot exceed the allowance.

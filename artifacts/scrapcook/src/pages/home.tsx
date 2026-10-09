@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ArrowLeft,
   ArrowRight,
@@ -29,6 +29,13 @@ import type {
 } from "@workspace/api-client-react";
 import CookedMealDialog from "@/components/cooked-meal-dialog";
 import { useShowNutrition } from "@/hooks/use-show-nutrition";
+import RecipesPaused from "@/components/recipes-paused";
+import { getPersonalRecipeKeys } from "@/lib/personal-recipe-keys";
+import type { RecipePauseStatus } from "@workspace/api-client-react";
+
+class RecipesPausedError extends Error {
+  constructor(public status: RecipePauseStatus) { super(status.message); }
+}
 
 type FlowStep = "ingredients" | "preferences" | "results";
 type EquipmentChoice = CookingPreferences["equipment"][number];
@@ -479,13 +486,17 @@ function RecipeCard({ recipe, index, snackMode, showNutrition }: { recipe: Recip
 }
 
 async function requestRecipes(ingredients: string[], preferences: CookingPreferences, snackMode: boolean, showNutrition: boolean): Promise<RecipeResults> {
-  const response = await fetch("/api/recipes", {
+  const personal = getPersonalRecipeKeys();
+  const response = await fetch("/api/getRecipes", {
     method: "POST",
     credentials: "same-origin",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ ingredients, preferences, snackMode, showNutrition }),
+    body: JSON.stringify({ ingredients, preferences, snackMode, showNutrition,
+      ...(personal.userSpoonKey ? { userSpoonKey: personal.userSpoonKey, ...(personal.userGemKey ? { userGemKey: personal.userGemKey } : {}) } : {}),
+    }),
   });
   const result = await response.json();
+  if (result.paused) throw new RecipesPausedError(result);
   if (!response.ok) throw new Error(result.error ?? "Could not generate recipes. Please try again.");
   return result as RecipeResults;
 }
@@ -504,6 +515,28 @@ export default function HomePage() {
   const [hydrated, setHydrated] = useState(false);
   const [error, setError] = useState("");
   const [snackMode, setSnackMode] = useState(false);
+  const [pause, setPause] = useState<RecipePauseStatus | null>(null);
+  const [checkingPause, setCheckingPause] = useState(true);
+  const checkPause = useCallback(async () => {
+    if (getPersonalRecipeKeys().userSpoonKey) { setPause(null); setCheckingPause(false); return; }
+    try {
+      const response = await fetch("/api/recipes/status", { cache: "no-store" });
+      if (response.ok) {
+        const status: RecipePauseStatus = await response.json();
+        setPause(status.paused ? status : null);
+      }
+    } finally { setCheckingPause(false); }
+  }, []);
+  useEffect(() => {
+    const check = () => { void checkPause().catch(() => {}); };
+    check();
+    const timer = setInterval(check, 30000);
+    return () => clearInterval(timer);
+  }, [checkPause]);
+  const handleRecipeError = (cause: unknown) => {
+    if (cause instanceof RecipesPausedError) { setPause(cause.status); setError(""); return; }
+    setError(errorMessage(cause, "We couldn't find recipes just now. Please try again."));
+  };
 
   useEffect(() => {
     const saved = sessionQuery.data;
@@ -557,7 +590,7 @@ export default function HomePage() {
               updateCachedSession(queryClient, updated);
               setStep("results");
             },
-            onError: (cause) => setError(errorMessage(cause, "We couldn't find recipes just now. Please try again.")),
+            onError: handleRecipeError,
           });
         },
         onError: (cause) => setError(errorMessage(cause, "We couldn't save your preferences. Please try again.")),
@@ -572,7 +605,7 @@ export default function HomePage() {
         const current = queryClient.getQueryData<ScrapCookSession>(getGetScrapCookSessionQueryKey());
         if (current) updateCachedSession(queryClient, { ...current, recipes: result.recipes, demoMode: result.demoMode });
       },
-      onError: (cause) => setError(errorMessage(cause, "We couldn't find recipes just now. Please try again.")),
+      onError: handleRecipeError,
     });
   };
 
@@ -596,6 +629,8 @@ export default function HomePage() {
     }}
   />;
 
+  if (pause) return <RecipesPaused resumesAt={pause.resumesAt} onCheck={checkPause} />;
+
   if (sessionQuery.isError) {
     return (
       <div className="sc-app">
@@ -610,7 +645,7 @@ export default function HomePage() {
     );
   }
 
-  if (sessionQuery.isLoading || !hydrated) {
+  if (sessionQuery.isLoading || !hydrated || checkingPause) {
     return (
       <div className="sc-app">
         {header}

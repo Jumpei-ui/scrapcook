@@ -9,11 +9,11 @@ Use Spoonacular for recipe discovery when the app owner configures its server ke
 
 **How to apply:** Keep AI changes within recipe generation and detailed cooking steps; leave dashboard, pantry, authentication, and estimate behavior alone. If Gemini enhancement fails, retain source instructions with an honest notice.
 
-Use the app owner's provider keys in server Secrets, not browser-supplied credentials or a silently substituted Replit-managed AI integration.
+Keep shared owner provider keys in server Secrets. Opt-in personal-key overrides are allowed to continue cooking during a shared-key pause.
 
-**Why:** The user explicitly replaced the earlier localStorage approach with server-only secrets before public launch.
+**Why:** The user secured shared keys on the backend, then explicitly requested personal browser-stored keys as a pause bypass.
 
-**How to apply:** Do not reintroduce browser key fields, persistence, or overrides. Never log credentials or provider errors that can contain them, and never include keys in client responses.
+**How to apply:** Never send shared keys to browsers. Personal requests must actually use supplied personal keys, never fall back to a shared Gemini key or unlock shared funds using a client flag. Keep personal credentials out of logs, backend persistence, and responses; warn that localStorage is not encrypted. Do not silently replace the user's providers with a Replit-managed AI integration.
 
 Rate limits on owner-funded generation must survive restarts, be shared across app instances, and fail closed when their store is unavailable.
 

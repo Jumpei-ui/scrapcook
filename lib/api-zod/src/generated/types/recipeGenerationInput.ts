@@ -9,6 +9,18 @@ import type { CookingPreferences } from './cookingPreferences';
 
 export interface RecipeGenerationInput {
   /**
+     * Personal key; actually used instead of the shared key
+     * @minLength 1
+     * @maxLength 512
+     */
+  userSpoonKey?: string;
+  /**
+     * Optional personal Gemini key, only with a personal Spoonacular key
+     * @minLength 1
+     * @maxLength 512
+     */
+  userGemKey?: string;
+  /**
      * @minItems 3
      * @maxItems 40
      * @items.maxLength 60

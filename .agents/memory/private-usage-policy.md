@@ -21,8 +21,14 @@ Reset display counters without resetting protective rate limits or spending caps
 
 **How to apply:** Keep reporting and enforcement state separate and retain the reset confirmation.
 
-Use Brisbane midnight for the daily reporting boundary and retain only today's last 20 request IPs.
+Use midnight UTC for daily reporting and automatic spending pauses; retain only today's last 20 request IPs.
 
-**Why:** Daily reporting needs a consistent server-side boundary, and the requested IP history is a small private list rather than a permanent visitor archive.
+**Why:** The user explicitly requested midnight UTC resets for auto-pause. Owner reporting should match that boundary, and IP history is a small private list rather than a permanent visitor archive.
 
-**How to apply:** Keep raw IP history backend-only and bounded; never copy it into agent memory or public logs.
+**How to apply:** Do not switch the budget day back to the browser's or owner's local timezone. Keep raw IP history backend-only and bounded; never copy it into agent memory or public logs.
+
+Only authenticated owners may Force Resume after explicitly accepting possible charges; the exception expires at midnight UTC.
+
+**Why:** The user requested automatic pausing at the Spoonacular limit and a deliberate owner-only way to accept additional costs. Reporting resets are not that consent.
+
+**How to apply:** Keep acceptance explicit and CSRF-protected. Preserve other protective request limits. Call counts are not Spoonacular billing points, so never promise a zero-charge guarantee from a call-count ceiling.

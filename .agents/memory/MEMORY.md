@@ -3,5 +3,5 @@
 - [ScrapCook AI scope](scrapcook-ai-scope.md) — Spoonacular discovery, Gemini detail expansion or pantry-only fallback; keep grocery estimates outside AI.
 - [Recipe photo policy](recipe-photo-policy.md) — prefer provider photos; any future generated recipe photo must use the requested photography style and actual ingredients.
 - [Protected session testing](scoped-session-testing.md) — respect cookie paths; browser scripts may lack Node environment access, so never dump credentials to work around it.
-- [Private usage policy](private-usage-policy.md) — owner-only reporting; actual call counts; Brisbane days; bounded IP history; resets must not reopen protective limits.
+- [Private usage policy](private-usage-policy.md) — owner-only reporting; actual calls; UTC days; bounded IP history; resets never reopen caps; Force Resume requires charge consent.
 - [OpenAPI body schemas](openapi-body-schemas.md) — use named request-body components to avoid duplicate exports between generated Zod and DTO modules.

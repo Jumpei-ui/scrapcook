@@ -13,7 +13,9 @@ button{background:#139f49;color:white;border:0;border-radius:12px;padding:12px 2
 button:disabled{opacity:.5;cursor:wait}@media(max-width:600px){main{margin:24px auto}.cards{grid-template-columns:1fr}.card{padding:18px}h1{font-size:30px}}
 </style></head><body><main>
 <span class="muted">SCRAPCOOK · OWNER ONLY</span><h1>Private recipe usage</h1>
-<p class="muted">Today: <strong id="date">Loading…</strong> · Australia/Brisbane</p>
+<p class="muted">Today: <strong id="date">Loading…</strong> · UTC (resets at midnight UTC)</p>
+<p id="pause" class="warning" role="alert" hidden></p>
+<button id="resume" hidden disabled>Force Resume (I accept charges)</button>
 <div class="cards"><section class="card"><h2>Spoonacular</h2><div class="value" id="spoon">—</div><p class="muted">API calls today</p></section>
 <section class="card"><h2>Gemini</h2><div class="value" id="gemini">—</div><p class="muted">API calls today</p></section>
 <section class="card"><h2>Total requests today</h2><div class="value" id="total">—</div><p class="muted">Recipe generation requests</p></section></div>
@@ -23,10 +25,20 @@ button:disabled{opacity:.5;cursor:wait}@media(max-width:600px){main{margin:24px 
 <p class="muted">Counters measure provider calls, including retries—not billed credits. Cached results make no provider calls.
 Request totals include unsuccessful generation attempts. Only today's last 20 IPs are kept.
 Resetting these display counters does not restore provider quotas or reset protective rate limits.</p>
+<p class="muted">Auto-pause protects 150 owner-funded Spoonacular call attempts per UTC day, separately from display counters.
+Calls are not billed quota points: some Spoonacular endpoints cost more than one point, so this is not a guaranteed zero-charge cap.
+Personal-key calls do not use the shared allowance. Force Resume disables this auto-pause until midnight UTC; other rate limits still apply.</p>
 </main><script nonce="${nonce}">
 const csrfToken=${JSON.stringify(csrfToken)};
 const byId=(id)=>document.getElementById(id);
 function render(data){
+  const pause=data.pause;
+  byId("pause").hidden=!pause?.paused&&!pause?.forceResumed;
+  byId("pause").textContent=pause?.paused
+    ? "⏸️ APP IS PAUSED - Limit hit at "+new Date(pause.pausedAt).toLocaleTimeString("en-AU",{timeZone:"UTC",hour:"numeric",minute:"2-digit"})+" UTC"
+    : pause?.forceResumed ? "Force Resume is active until midnight UTC. Additional provider charges may apply." : "";
+  byId("resume").hidden=!pause?.paused;
+  byId("resume").disabled=false;
   byId("date").textContent=data.date;
   byId("spoon").textContent=data.spoon+" / "+data.limits.spoon+" used";
   byId("gemini").textContent=data.gemini+" / "+data.limits.gemini+" used";
@@ -59,6 +71,17 @@ byId("reset").addEventListener("click",async()=>{
   try{const response=await fetch("/api/admin/reset",{method:"POST",credentials:"same-origin",headers:{"X-Admin-CSRF":csrfToken}});if(!response.ok)throw new Error();render(await response.json());byId("status").textContent="Counters reset.";}
   catch{byId("status").textContent="Counters could not be reset. Please reload and try again.";}
   finally{byId("reset").disabled=false;}
+});
+byId("resume").addEventListener("click",async()=>{
+  if(!confirm("Resume shared-key calls until midnight UTC? I accept possible provider charges. Other rate limits still apply."))return;
+  byId("resume").disabled=true;
+  try{
+    const response=await fetch("/api/admin/resume",{method:"POST",credentials:"same-origin",
+      headers:{"Content-Type":"application/json","X-Admin-CSRF":csrfToken},body:JSON.stringify({acceptCharges:true})});
+    if(!response.ok)throw new Error();
+    render(await response.json());byId("status").textContent="Recipes resumed until midnight UTC.";
+  }catch{byId("status").textContent="Recipes could not be resumed. Please reload and try again.";}
+  finally{byId("resume").disabled=false;}
 });
 load();
 setInterval(()=>{if(!byId("reset").disabled)load();},30000);
