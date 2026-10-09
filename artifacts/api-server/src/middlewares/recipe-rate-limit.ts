@@ -3,6 +3,7 @@ import type { RequestHandler } from "express";
 import { pool } from "@workspace/db";
 
 const limit = 20;
+const scanLimit = 10;
 let ready: Promise<unknown> | undefined;
 let nextCleanup = 0;
 
@@ -27,6 +28,41 @@ async function ensureStore() {
     await pool.query("DELETE FROM recipe_rate_limits WHERE updated_at < now() - interval '1 hour'");
   }
 }
+
+// Both scan modes share one rolling-hour allowance, persisted like recipe limits.
+export const scanRateLimit: RequestHandler = async (req, res, next) => {
+  try {
+    const secret = process.env.SESSION_SECRET;
+    if (!secret || !req.ip) throw new Error("Scan identity unavailable.");
+    await ensureStore();
+    const hash = createHmac("sha256", secret).update(`scan:${req.ip}`).digest("hex");
+    const result = await pool.query<{ used: number }>(`
+      INSERT INTO recipe_rate_limits (client_hash, request_times)
+      VALUES ($1, ARRAY[clock_timestamp()])
+      ON CONFLICT (client_hash) DO UPDATE SET
+        request_times = array_append(ARRAY(
+          SELECT t FROM unnest(recipe_rate_limits.request_times) AS t
+          WHERE t > clock_timestamp() - interval '1 hour'
+        ), clock_timestamp()), updated_at = clock_timestamp()
+      WHERE cardinality(ARRAY(
+        SELECT t FROM unnest(recipe_rate_limits.request_times) AS t
+        WHERE t > clock_timestamp() - interval '1 hour'
+      )) < $2
+      RETURNING cardinality(request_times) AS used
+    `, [hash, scanLimit]);
+    res.setHeader("RateLimit-Limit", String(scanLimit));
+    res.setHeader("RateLimit-Remaining", String(scanLimit - (result.rows[0]?.used ?? scanLimit)));
+    if (!result.rows.length) {
+      // Conservative retry window avoids revealing private allowance timestamps.
+      res.setHeader("Retry-After", "3600");
+      res.status(429).json({ error: "Scan limit reached: 10 scans per hour. Please try again later." });
+      return;
+    }
+    next();
+  } catch {
+    res.status(503).json({ error: "Scan rate limiting is unavailable. Please try again later." });
+  }
+};
 
 export const recipeRateLimit: RequestHandler = async (req, res, next) => {
   try {

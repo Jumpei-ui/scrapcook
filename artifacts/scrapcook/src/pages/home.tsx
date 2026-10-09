@@ -29,6 +29,8 @@ import type {
 } from "@workspace/api-client-react";
 import CookedMealDialog from "@/components/cooked-meal-dialog";
 import { useShowNutrition } from "@/hooks/use-show-nutrition";
+import IngredientScanner from "@/components/ingredient-scanner";
+import type { DetectResult } from "@/components/ingredient-scanner";
 import RecipesPaused from "@/components/recipes-paused";
 import { getPersonalRecipeKeys } from "@/lib/personal-recipe-keys";
 import type { RecipePauseStatus } from "@workspace/api-client-react";
@@ -214,9 +216,27 @@ function IngredientCard({
     setSearch("");
   };
 
+  const detect = (names: string[]): DetectResult => {
+    const next = [...ingredients];
+    const seen = new Set(next.map((item) => item.trim().toLowerCase()));
+    let added = 0, duplicates = 0, skipped = 0;
+    for (const raw of names) {
+      const value = raw.trim().toLowerCase().slice(0, 30);
+      if (!value) continue;
+      if (seen.has(value)) { duplicates++; continue; }
+      if (next.length >= 40) { skipped++; continue; }
+      seen.add(value);
+      next.push(value);
+      added++;
+    }
+    if (added > 0) setIngredients(next);
+    return { added, duplicates, skipped };
+  };
+
   return (
     <div className="sc-card sc-ingredient-card">
       <div className="sc-card-kicker"><span className="sc-kicker-dot" /> YOUR INGREDIENTS</div>
+      <IngredientScanner onDetected={detect} />
       <form
         className="sc-search-wrap"
         onSubmit={(event) => {

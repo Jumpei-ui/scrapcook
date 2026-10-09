@@ -5,6 +5,31 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+export type IngredientScanInputMode = typeof IngredientScanInputMode[keyof typeof IngredientScanInputMode];
+
+
+export const IngredientScanInputMode = {
+  fridge: 'fridge',
+  pantry: 'pantry',
+} as const;
+
+export interface IngredientScanInput {
+  /**
+     * Resized image data URL; photos are not persisted
+     * @maxLength 1800000
+     * @pattern ^data:image/(jpeg|png|webp);base64,[A-Za-z0-9+/]+={0,2}$
+     */
+  image: string;
+  mode: IngredientScanInputMode;
+}
+
+/**
+ * @maxItems 15
+ * @items.minLength 1
+ * @items.maxLength 30
+ */
+export type ScannedIngredients = string[];
+
 export interface PrivateAdminLoginInput {
   password: string;
 }

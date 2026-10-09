@@ -36,6 +36,14 @@ app.use(
 );
 app.use(cookieParser(sessionSecret));
 app.use(cors());
+// Only the scanner accepts photo payloads; other routes retain the small default.
+app.use("/api/scanIngredients", express.json({ limit: "2mb" }),
+  ((error, _req, res, _next) => {
+    const oversized = error.status === 413;
+    res.status(oversized ? 413 : 400).json({
+      error: oversized ? "Photo payload too large. Please resize the image." : "Invalid scan request.",
+    });
+  }) as express.ErrorRequestHandler);
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 

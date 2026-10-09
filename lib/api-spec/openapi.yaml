@@ -15,6 +15,34 @@ tags:
   - name: savings
     description: ScrapCook savings records and dashboard
 paths:
+  /scanIngredients:
+    post:
+      operationId: scanIngredients
+      tags: [scrapcook]
+      summary: Identify visible ingredients in a fridge or pantry photo
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/IngredientScanInput"
+      responses:
+        "200":
+          description: Up to fifteen visible ingredients, without duplicates
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ScannedIngredients"
+        "400":
+          description: Invalid photo or scan mode
+        "413":
+          description: Photo payload too large
+        "429":
+          description: Ten scans per IP per hour exceeded, or shared service paused
+        "502":
+          description: Vision provider unavailable or invalid response
+        "503":
+          description: Scanner configuration or protective storage unavailable
   /healthz:
     get:
       operationId: healthCheck
@@ -455,6 +483,26 @@ paths:
                 $ref: "#/components/schemas/ApiError"
 components:
   schemas:
+    IngredientScanInput:
+      type: object
+      required: [image, mode]
+      properties:
+        image:
+          type: string
+          maxLength: 1800000
+          pattern: '^data:image/(jpeg|png|webp);base64,[A-Za-z0-9+/]+={0,2}$'
+          description: Resized image data URL; photos are not persisted
+        mode:
+          type: string
+          enum: [fridge, pantry]
+    ScannedIngredients:
+      type: array
+      maxItems: 15
+      uniqueItems: true
+      items:
+        type: string
+        minLength: 1
+        maxLength: 30
     PrivateAdminLoginInput:
       type: object
       required: [password]

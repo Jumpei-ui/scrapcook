@@ -9,6 +9,28 @@ import * as zod from 'zod';
 
 
 /**
+ * @summary Identify visible ingredients in a fridge or pantry photo
+ */
+export const scanIngredientsBodyImageMax = 1800000;
+
+
+export const scanIngredientsBodyImageRegExp = new RegExp('^data:image/(jpeg|png|webp);base64,[A-Za-z0-9+/]+={0,2}$');
+
+
+export const ScanIngredientsBody = zod.object({
+  "image": zod.string().max(scanIngredientsBodyImageMax).regex(scanIngredientsBodyImageRegExp).describe('Resized image data URL; photos are not persisted'),
+  "mode": zod.enum(['fridge', 'pantry'])
+})
+
+export const scanIngredientsResponseMax = 30;
+
+
+
+export const ScanIngredientsResponseItem = zod.string().min(1).max(scanIngredientsResponseMax)
+export const ScanIngredientsResponse = zod.array(ScanIngredientsResponseItem).max(15)
+
+
+/**
  * Returns server health status
  * @summary Health check
  */

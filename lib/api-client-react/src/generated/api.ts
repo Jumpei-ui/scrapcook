@@ -24,6 +24,7 @@ import type {
   CookedMeal,
   CookedMealInput,
   HealthStatus,
+  IngredientScanInput,
   InternalProviderUsageInput,
   MadeRecipe,
   PrivateAdminLoginInput,
@@ -38,6 +39,7 @@ import type {
   SavingsComparison,
   SavingsDashboard,
   SavingsSettingsInput,
+  ScannedIngredients,
   ScrapCookSession,
   ScrapCookSessionInput
 } from './api.schemas';
@@ -68,6 +70,94 @@ const withQueryKey = <T extends object, K>(query: T, queryKey: K): T & { queryKe
   }
   return result;
 };
+
+export const getScanIngredientsUrl = () => {
+
+
+
+
+  return `/api/scanIngredients`
+}
+
+/**
+ * @summary Identify visible ingredients in a fridge or pantry photo
+ */
+export const scanIngredients = async (ingredientScanInput: IngredientScanInput, options?: Parameters<typeof customFetch>[1]): Promise<ScannedIngredients> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<ScannedIngredients>(getScanIngredientsUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(ingredientScanInput)
+  }
+);}
+
+
+
+
+
+export const getScanIngredientsMutationKey = () => ['scanIngredients'] as const;
+
+export const getScanIngredientsMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof scanIngredients>>, TError,ScanIngredientsMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof scanIngredients>>, TError,ScanIngredientsMutationVariables, TContext> => {
+
+const mutationKey = getScanIngredientsMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof scanIngredients>>, ScanIngredientsMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  scanIngredients(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ScanIngredientsMutationResult = NonNullable<Awaited<ReturnType<typeof scanIngredients>>>
+    export type ScanIngredientsMutationBody = BodyType<IngredientScanInput>
+    export type ScanIngredientsMutationError = ErrorType<void>
+    export type ScanIngredientsMutationVariables = {data: BodyType<IngredientScanInput>}
+
+    /**
+ * @summary Identify visible ingredients in a fridge or pantry photo
+ */
+export const useScanIngredients = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof scanIngredients>>, TError,ScanIngredientsMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof scanIngredients>>,
+        TError,
+        ScanIngredientsMutationVariables,
+        TContext
+      > => {
+      return useMutation(getScanIngredientsMutationOptions(options));
+    }
 
 export const getHealthCheckUrl = () => {
 

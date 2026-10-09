@@ -7,7 +7,19 @@ Use Spoonacular for recipe discovery when the app owner configures its server ke
 
 **Why:** The user revised the earlier instruction-only AI boundary to a hybrid recipe flow with a Gemini-only fallback, while explicitly prohibiting an app rebuild or restyling.
 
-**How to apply:** Keep AI changes within recipe generation and detailed cooking steps; leave dashboard, pantry, authentication, and estimate behavior alone. If Gemini enhancement fails, retain source instructions with an honest notice.
+**How to apply:** Keep recipe AI changes within generation and detailed cooking steps; leave dashboard, authentication, and estimate behavior alone. Fridge/Pantry photo identification is now an explicit, opt-in addition to the ingredient selector, not an overhaul of pantry management. If Gemini enhancement fails, retain source instructions with an honest notice.
+
+Process scan photos transiently; keep ingredient names, not uploaded photo archives.
+
+**Why:** Scanning only needs the identified ingredients. Persisting private fridge/pantry images would add unnecessary privacy exposure and storage cost.
+
+**How to apply:** Disclose that identification sends the selected photo to Gemini. Do not log, persist or cache photo payloads. Preserve the existing editable ingredient chips so users can correct uncertain AI detections.
+
+Use a low-cost multimodal Flash-Lite model for vision scanning independently of the recipe-generation model.
+
+**Why:** The requested Gemini 1.5 Flash was retired. A supported inexpensive vision model preserves the cost goal without changing existing recipe generation.
+
+**How to apply:** Check Google's current model availability before changing scan models and explain deprecation-driven substitutions. Do not silently move to a different provider or a more expensive model.
 
 Keep shared owner provider keys in server Secrets. Opt-in personal-key overrides are allowed to continue cooking during a shared-key pause.
 
