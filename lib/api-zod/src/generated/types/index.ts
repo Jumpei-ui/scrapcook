@@ -7,6 +7,8 @@
  */
 
 export * from './apiError';
+export * from './chefRedirect';
+export * from './chefSubscription';
 export * from './cookedMeal';
 export * from './cookedMealInput';
 export * from './cookedMealInputComparedToLabel';
@@ -15,6 +17,7 @@ export * from './cookingPreferences';
 export * from './cookingTime';
 export * from './dietPreference';
 export * from './equipment';
+export * from './getChefSubscriptionParams';
 export * from './healthStatus';
 export * from './ingredientScanInput';
 export * from './ingredientScanInputMode';
@@ -27,6 +30,7 @@ export * from './privateRecipePause';
 export * from './privateRecipeUsage';
 export * from './privateRecipeUsageLimits';
 export * from './privateRecipeUsageRecentRequestsItem';
+export * from './receiveChefWebhook200';
 export * from './recipeCostEstimate';
 export * from './recipeCostEstimateEstimateType';
 export * from './recipeCostEstimateInput';

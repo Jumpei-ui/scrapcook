@@ -9,6 +9,49 @@ import * as zod from 'zod';
 
 
 /**
+ * @summary Start Chef's Edition checkout for the verified signed-in customer
+ */
+export const CreateChefCheckoutResponse = zod.object({
+  "url": zod.string()
+})
+
+
+/**
+ * @summary Open the signed-in customer's subscription management portal
+ */
+export const CreateChefPortalResponse = zod.object({
+  "url": zod.string()
+})
+
+
+/**
+ * @summary Read personal subscription status; never grants access using an email alone
+ */
+export const GetChefSubscriptionQueryParams = zod.object({
+  "session_id": zod.coerce.string().optional().describe('Optional checkout receipt, verified against the signed-in customer'),
+  "email": zod.coerce.string().optional().describe('Optional restore email; must match the verified signed-in account')
+})
+
+export const GetChefSubscriptionResponse = zod.object({
+  "isPro": zod.boolean(),
+  "email": zod.string().nullable(),
+  "expiresAt": zod.string().nullable(),
+  "freeRemaining": zod.number().int(),
+  "resetsAt": zod.string(),
+  "billingReady": zod.boolean(),
+  "limitsNotice": zod.string()
+})
+
+
+/**
+ * @summary Verify Stripe signature against the unmodified request body
+ */
+export const ReceiveChefWebhookResponse = zod.object({
+  "received": zod.boolean()
+})
+
+
+/**
  * @summary Identify visible ingredients in a fridge or pantry photo
  */
 export const scanIngredientsBodyImageMax = 1800000;

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "wouter";
+import ChefButton from "@/components/chef-button";
 import FreshStartLogo from "@/components/fresh-start-logo";
 import { useQueryClient } from "@tanstack/react-query";
 import { CSVLink } from "react-csv";
@@ -52,6 +53,7 @@ function AppHeader() {
         <span>scrap<span>cook</span></span>
       </FreshStartLogo>
       <nav className="sc-savings-actions" aria-label="ScrapCook navigation">
+        <ChefButton />
         <Link className="sc-tool-button" href="/">Find a recipe</Link>
         <Link className="sc-tool-button" href="/settings"><Settings2 size={15} /> Settings</Link>
       </nav>

@@ -3,7 +3,6 @@ import type { RequestHandler } from "express";
 import { pool } from "@workspace/db";
 
 const limit = 20;
-const scanLimit = 10;
 let ready: Promise<unknown> | undefined;
 let nextCleanup = 0;
 
@@ -31,6 +30,7 @@ async function ensureStore() {
 
 // Both scan modes share one rolling-hour allowance, persisted like recipe limits.
 export const scanRateLimit: RequestHandler = async (req, res, next) => {
+  const scanLimit = res.locals.chefPro ? 120 : 10;
   try {
     const secret = process.env.SESSION_SECRET;
     if (!secret || !req.ip) throw new Error("Scan identity unavailable.");
@@ -55,7 +55,7 @@ export const scanRateLimit: RequestHandler = async (req, res, next) => {
     if (!result.rows.length) {
       // Conservative retry window avoids revealing private allowance timestamps.
       res.setHeader("Retry-After", "3600");
-      res.status(429).json({ error: "Scan limit reached: 10 scans per hour. Please try again later." });
+      res.status(429).json({ error: `Scan anti-abuse limit reached: ${scanLimit} scans per hour. Please try again later.` });
       return;
     }
     next();

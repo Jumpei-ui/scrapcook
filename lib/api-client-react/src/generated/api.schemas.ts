@@ -5,6 +5,20 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+export interface ChefRedirect {
+  url: string;
+}
+
+export interface ChefSubscription {
+  isPro: boolean;
+  email: string | null;
+  expiresAt: string | null;
+  freeRemaining: number;
+  resetsAt: string;
+  billingReady: boolean;
+  limitsNotice: string;
+}
+
 export type IngredientScanInputMode = typeof IngredientScanInputMode[keyof typeof IngredientScanInputMode];
 
 
@@ -402,4 +416,19 @@ export interface RecipeCostEstimate {
 export interface ApiError {
   error: string;
 }
+
+export type GetChefSubscriptionParams = {
+/**
+ * Optional checkout receipt, verified against the signed-in customer
+ */
+session_id?: string;
+/**
+ * Optional restore email; must match the verified signed-in account
+ */
+email?: string;
+};
+
+export type ReceiveChefWebhook200 = {
+  received: boolean;
+};
 

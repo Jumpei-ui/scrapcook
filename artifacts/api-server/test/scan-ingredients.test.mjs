@@ -43,6 +43,10 @@ test("vision scans use private credentials, shared atomic limits and validated r
         resolveDir: new URL("..", import.meta.url).pathname },
       bundle: true, platform: "node", format: "esm", write: false, external: ["express"],
       plugins: [{ name: "fixture-db", setup(builder) {
+        builder.onResolve({ filter: /^@clerk\/express$/ }, () => ({ path: "clerk", namespace: "fixture-clerk" }));
+        builder.onLoad({ filter: /.*/, namespace: "fixture-clerk" }, () => ({
+          contents: "export const getAuth=()=>({userId:null}); export const clerkClient={users:{}};",
+        }));
         builder.onResolve({ filter: /^@workspace\/db$/ }, () => ({ path: "db", namespace: "fixture" }));
         builder.onLoad({ filter: /.*/, namespace: "fixture" }, () => ({
           contents: "export const pool = globalThis.__scanPool;",

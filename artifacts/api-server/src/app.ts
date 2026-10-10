@@ -5,6 +5,10 @@ import pinoHttp from "pino-http";
 import router from "./routes";
 import adminRouter from "./routes/admin";
 import { logger } from "./lib/logger";
+import { clerkMiddleware } from "@clerk/express";
+import { publishableKeyFromHost } from "@clerk/shared/keys";
+import { CLERK_PROXY_PATH, clerkProxyMiddleware, getClerkProxyHost } from "./middlewares/clerkProxyMiddleware";
+import { chefWebhook } from "./routes/chef-billing";
 
 const app: Express = express();
 const sessionSecret = process.env.SESSION_SECRET;
@@ -35,6 +39,8 @@ app.use(
   }),
 );
 app.use(cookieParser(sessionSecret));
+app.use(CLERK_PROXY_PATH, clerkProxyMiddleware());
+app.post(["/api/webhook", "/api/stripe/webhook"], express.raw({ type: "application/json" }), chefWebhook);
 app.use(cors());
 // Only the scanner accepts photo payloads; other routes retain the small default.
 app.use("/api/scanIngredients", express.json({ limit: "2mb" }),
@@ -46,6 +52,9 @@ app.use("/api/scanIngredients", express.json({ limit: "2mb" }),
   }) as express.ErrorRequestHandler);
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use(clerkMiddleware((req) => ({
+  publishableKey: publishableKeyFromHost(getClerkProxyHost(req) ?? "", process.env.CLERK_PUBLISHABLE_KEY),
+})));
 
 app.use(adminRouter);
 app.use("/api", router);

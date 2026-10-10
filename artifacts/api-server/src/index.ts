@@ -3,6 +3,7 @@ import { logger } from "./lib/logger";
 import { spawn } from "node:child_process";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { initializeChefBilling, chefBillingStage } from "./lib/chef-stripe";
 
 const rawPort = process.env["PORT"];
 
@@ -13,6 +14,8 @@ if (!rawPort) {
 }
 
 const port = Number(rawPort);
+void initializeChefBilling().then(() => logger.info("Chef billing is ready"))
+  .catch(() => logger.error({ stage: chefBillingStage }, "Chef billing setup failed; paid checkout is disabled. Free recipes remain available."));
 
 if (Number.isNaN(port) || port <= 0) {
   throw new Error(`Invalid PORT value: "${rawPort}"`);

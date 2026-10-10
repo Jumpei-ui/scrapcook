@@ -71,10 +71,13 @@ test("shared recipe limits", async (t) => {
       plugins: [{
         name: "test-boundaries",
         setup(builder) {
+          builder.onResolve({ filter: /^\.\.\/lib\/chef-store$/ }, () => ({ path: "chef-store", namespace: "test" }));
           builder.onResolve({ filter: /^@workspace\/db$/ }, () => ({ path: "db", namespace: "test" }));
           builder.onResolve({ filter: /^\.\/savings$/ }, () => ({ path: "savings", namespace: "test" }));
           builder.onLoad({ filter: /.*/, namespace: "test" }, ({ path }) => ({
-            contents: path === "db"
+            contents: path === "chef-store"
+              ? "export const chefIdentity=(_q,s,n)=>{s.locals.chefPro=true;n();}; export const freeRecipeQuota=(_q,_s,n)=>n();"
+              : path === "db"
               ? "export const pool = globalThis.__recipeLimitTestPool;"
               : 'import { Router } from "express"; export default Router();',
           }));

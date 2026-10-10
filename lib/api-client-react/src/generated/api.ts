@@ -21,14 +21,18 @@ import type {
 
 import type {
   ApiError,
+  ChefRedirect,
+  ChefSubscription,
   CookedMeal,
   CookedMealInput,
+  GetChefSubscriptionParams,
   HealthStatus,
   IngredientScanInput,
   InternalProviderUsageInput,
   MadeRecipe,
   PrivateAdminLoginInput,
   PrivateRecipeUsage,
+  ReceiveChefWebhook200,
   RecipeCostEstimate,
   RecipeCostEstimateInput,
   RecipeDetail,
@@ -70,6 +74,312 @@ const withQueryKey = <T extends object, K>(query: T, queryKey: K): T & { queryKe
   }
   return result;
 };
+
+export const getCreateChefCheckoutUrl = () => {
+
+
+
+
+  return `/api/create-checkout`
+}
+
+/**
+ * @summary Start Chef's Edition checkout for the verified signed-in customer
+ */
+export const createChefCheckout = async ( options?: Parameters<typeof customFetch>[1]): Promise<ChefRedirect> => {
+
+  return customFetch<ChefRedirect>(getCreateChefCheckoutUrl(),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getCreateChefCheckoutMutationKey = () => ['createChefCheckout'] as const;
+
+export const getCreateChefCheckoutMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createChefCheckout>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createChefCheckout>>, TError,void, TContext> => {
+
+const mutationKey = getCreateChefCheckoutMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createChefCheckout>>, void> = () => {
+
+
+          return  createChefCheckout(requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateChefCheckoutMutationResult = NonNullable<Awaited<ReturnType<typeof createChefCheckout>>>
+
+    export type CreateChefCheckoutMutationError = ErrorType<unknown>
+
+
+    /**
+ * @summary Start Chef's Edition checkout for the verified signed-in customer
+ */
+export const useCreateChefCheckout = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createChefCheckout>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createChefCheckout>>,
+        TError,
+        void,
+        TContext
+      > => {
+      return useMutation(getCreateChefCheckoutMutationOptions(options));
+    }
+
+export const getCreateChefPortalUrl = () => {
+
+
+
+
+  return `/api/customer-portal`
+}
+
+/**
+ * @summary Open the signed-in customer's subscription management portal
+ */
+export const createChefPortal = async ( options?: Parameters<typeof customFetch>[1]): Promise<ChefRedirect> => {
+
+  return customFetch<ChefRedirect>(getCreateChefPortalUrl(),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getCreateChefPortalMutationKey = () => ['createChefPortal'] as const;
+
+export const getCreateChefPortalMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createChefPortal>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createChefPortal>>, TError,void, TContext> => {
+
+const mutationKey = getCreateChefPortalMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createChefPortal>>, void> = () => {
+
+
+          return  createChefPortal(requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateChefPortalMutationResult = NonNullable<Awaited<ReturnType<typeof createChefPortal>>>
+
+    export type CreateChefPortalMutationError = ErrorType<unknown>
+
+
+    /**
+ * @summary Open the signed-in customer's subscription management portal
+ */
+export const useCreateChefPortal = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createChefPortal>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createChefPortal>>,
+        TError,
+        void,
+        TContext
+      > => {
+      return useMutation(getCreateChefPortalMutationOptions(options));
+    }
+
+export const getGetChefSubscriptionUrl = (params?: GetChefSubscriptionParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/subscription-status?${stringifiedParams}` : `/api/subscription-status`
+}
+
+/**
+ * @summary Read personal subscription status; never grants access using an email alone
+ */
+export const getChefSubscription = async (params?: GetChefSubscriptionParams, options?: Parameters<typeof customFetch>[1]): Promise<ChefSubscription> => {
+
+  return customFetch<ChefSubscription>(getGetChefSubscriptionUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetChefSubscriptionQueryKey = (params?: GetChefSubscriptionParams,) => {
+    return [
+    `/api/subscription-status`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetChefSubscriptionQueryOptions = <TData = Awaited<ReturnType<typeof getChefSubscription>>, TError = ErrorType<unknown>>(params?: GetChefSubscriptionParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getChefSubscription>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetChefSubscriptionQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getChefSubscription>>> = ({ signal }) => getChefSubscription(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getChefSubscription>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetChefSubscriptionQueryResult = NonNullable<Awaited<ReturnType<typeof getChefSubscription>>>
+export type GetChefSubscriptionQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Read personal subscription status; never grants access using an email alone
+ */
+
+export function useGetChefSubscription<TData = Awaited<ReturnType<typeof getChefSubscription>>, TError = ErrorType<unknown>>(
+ params?: GetChefSubscriptionParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getChefSubscription>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetChefSubscriptionQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getReceiveChefWebhookUrl = () => {
+
+
+
+
+  return `/api/webhook`
+}
+
+/**
+ * @summary Verify Stripe signature against the unmodified request body
+ */
+export const receiveChefWebhook = async ( options?: Parameters<typeof customFetch>[1]): Promise<ReceiveChefWebhook200> => {
+
+  return customFetch<ReceiveChefWebhook200>(getReceiveChefWebhookUrl(),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getReceiveChefWebhookMutationKey = () => ['receiveChefWebhook'] as const;
+
+export const getReceiveChefWebhookMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof receiveChefWebhook>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof receiveChefWebhook>>, TError,void, TContext> => {
+
+const mutationKey = getReceiveChefWebhookMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof receiveChefWebhook>>, void> = () => {
+
+
+          return  receiveChefWebhook(requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ReceiveChefWebhookMutationResult = NonNullable<Awaited<ReturnType<typeof receiveChefWebhook>>>
+
+    export type ReceiveChefWebhookMutationError = ErrorType<unknown>
+
+
+    /**
+ * @summary Verify Stripe signature against the unmodified request body
+ */
+export const useReceiveChefWebhook = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof receiveChefWebhook>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof receiveChefWebhook>>,
+        TError,
+        void,
+        TContext
+      > => {
+      return useMutation(getReceiveChefWebhookMutationOptions(options));
+    }
 
 export const getScanIngredientsUrl = () => {
 

@@ -32,6 +32,7 @@ import { useShowNutrition } from "@/hooks/use-show-nutrition";
 import IngredientScanner from "@/components/ingredient-scanner";
 import FreshStartLogo from "@/components/fresh-start-logo";
 import type { DetectResult } from "@/components/ingredient-scanner";
+import ChefButton from "@/components/chef-button";
 import RecipesPaused from "@/components/recipes-paused";
 import { getPersonalRecipeKeys } from "@/lib/personal-recipe-keys";
 import type { RecipePauseStatus } from "@workspace/api-client-react";
@@ -161,6 +162,7 @@ function Header({ snackMode, onModeChange, onFindRecipes, disabled }: {
           <button type="button" className="sc-tool-button" aria-pressed={snackMode} disabled={disabled} onClick={() => onModeChange(true)} data-testid="button-mode-snacks"
             style={snackMode ? { background: "var(--sc-green)", borderColor: "var(--sc-green)", color: "white" } : undefined}>{snackMode ? "Snack Mode On" : "Snacks"}</button>
         </div>
+        <ChefButton />
         <Link href="/savings" className="sc-nav-link"><TrendingUp size={15} /> Savings</Link>
         <Link href="/settings" className="sc-nav-link">Settings</Link>
       </nav>
@@ -518,6 +520,7 @@ async function requestRecipes(ingredients: string[], preferences: CookingPrefere
   });
   const result = await response.json();
   if (result.paused) throw new RecipesPausedError(result);
+  if (!response.ok && result.freeLimit) window.dispatchEvent(new CustomEvent("chef-free-limit", { detail: { message: result.message ?? result.error, resetsAt: result.resetsAt } }));
   if (!response.ok) throw new Error(result.error ?? "Could not generate recipes. Please try again.");
   return result as RecipeResults;
 }

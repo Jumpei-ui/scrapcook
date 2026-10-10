@@ -15,6 +15,69 @@ tags:
   - name: savings
     description: ScrapCook savings records and dashboard
 paths:
+  /create-checkout:
+    post:
+      operationId: createChefCheckout
+      tags: [billing]
+      summary: Start Chef's Edition checkout for the verified signed-in customer
+      responses:
+        "200":
+          description: Stripe hosted checkout
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChefRedirect"
+  /customer-portal:
+    post:
+      operationId: createChefPortal
+      tags: [billing]
+      summary: Open the signed-in customer's subscription management portal
+      responses:
+        "200":
+          description: Stripe hosted billing portal
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChefRedirect"
+  /subscription-status:
+    get:
+      operationId: getChefSubscription
+      tags: [billing]
+      summary: Read personal subscription status; never grants access using an email alone
+      parameters:
+        - in: query
+          name: session_id
+          schema:
+            type: string
+          description: Optional checkout receipt, verified against the signed-in customer
+        - in: query
+          name: email
+          schema:
+            type: string
+          description: Optional restore email; must match the verified signed-in account
+      responses:
+        "200":
+          description: Personal subscription and free allowance
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChefSubscription"
+  /webhook:
+    post:
+      operationId: receiveChefWebhook
+      tags: [billing]
+      summary: Verify Stripe signature against the unmodified request body
+      responses:
+        "200":
+          description: Event acknowledged
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [received]
+                properties:
+                  received:
+                    type: boolean
   /scanIngredients:
     post:
       operationId: scanIngredients
@@ -494,6 +557,32 @@ paths:
                 $ref: "#/components/schemas/ApiError"
 components:
   schemas:
+    ChefRedirect:
+      type: object
+      required: [url]
+      properties:
+        url:
+          type: string
+    ChefSubscription:
+      type: object
+      required: [isPro, email, expiresAt, freeRemaining, resetsAt, billingReady, limitsNotice]
+      properties:
+        isPro:
+          type: boolean
+        email:
+          type: string
+          nullable: true
+        expiresAt:
+          type: string
+          nullable: true
+        freeRemaining:
+          type: integer
+        resetsAt:
+          type: string
+        billingReady:
+          type: boolean
+        limitsNotice:
+          type: string
     IngredientScanInput:
       type: object
       required: [image, mode]

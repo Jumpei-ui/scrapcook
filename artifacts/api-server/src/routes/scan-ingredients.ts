@@ -3,6 +3,7 @@ import { ScanIngredientsBody, ScanIngredientsResponse } from "@workspace/api-zod
 import { scanRateLimit } from "../middlewares/recipe-rate-limit";
 import { getRecipePauseState, publicRecipePause, reserveProviderAllowance } from "../lib/recipe-pause";
 import { recordProviderCall } from "../lib/recipe-usage";
+import { chefIdentity } from "../lib/chef-store";
 
 const router = Router();
 const model = "gemini-3.1-flash-lite";
@@ -33,7 +34,7 @@ router.post("/scanIngredients", (req, res, next) => {
   }
   res.locals.scan = { mode: parsed.data.mode, photo };
   next();
-}, scanRateLimit, async (_req, res): Promise<void> => {
+}, chefIdentity, scanRateLimit, async (_req, res): Promise<void> => {
   try {
     if (!(await reserveProviderAllowance("gemini"))) {
       res.status(429).json(publicRecipePause(await getRecipePauseState()));

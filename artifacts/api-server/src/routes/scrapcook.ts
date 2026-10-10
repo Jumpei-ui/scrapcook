@@ -3,6 +3,7 @@ import savingsRouter from "./savings";
 import { recipeRateLimit } from "../middlewares/recipe-rate-limit";
 import { recordRecipeRequest } from "../lib/recipe-usage";
 import { getRecipePauseState, publicRecipePause } from "../lib/recipe-pause";
+import { chefIdentity, freeRecipeQuota } from "../lib/chef-store";
 
 const router: IRouter = Router();
 const pythonPort = Number(process.env.SCRAPCOOK_PY_PORT ?? 5087);
@@ -75,7 +76,7 @@ router.post(["/recipes", "/getRecipes", "/scrapcook/recipes"], async (req, res, 
   } catch {
     res.status(503).json({ error: "Recipe spending protection is unavailable. Please try again later." });
   }
-}, recipeRateLimit, async (req, res) => {
+}, chefIdentity, freeRecipeQuota, recipeRateLimit, async (req, res) => {
   try {
     await recordRecipeRequest(req.ip!);
   } catch {

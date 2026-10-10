@@ -10,6 +10,8 @@ import {
 import type { SavingsComparisonLabel } from "@workspace/api-client-react";
 import { useToast } from "@/hooks/use-toast";
 import { useShowNutrition } from "@/hooks/use-show-nutrition";
+import ChefButton from "@/components/chef-button";
+import ChefSettings from "@/components/chef-settings";
 import FreshStartLogo from "@/components/fresh-start-logo";
 import { getPersonalRecipeKeys } from "@/lib/personal-recipe-keys";
 
@@ -70,6 +72,7 @@ export default function SettingsPage() {
           <FreshStartLogo href="/" className="sc-savings-brand" aria-label="ScrapCook home"><span className="sc-brand-mark"><CookingPot size={18} /></span><span>scrap<span>cook</span></span></FreshStartLogo>
           <nav className="sc-savings-actions" aria-label="ScrapCook navigation">
             <Link className="sc-tool-button" href="/savings"><ArrowLeft size={15} /> Savings dashboard</Link>
+            <ChefButton />
             <Link className="sc-tool-button" href="/">Find a recipe</Link>
             <button
               type="button" className="sc-tool-button" role="switch"
@@ -94,6 +97,7 @@ export default function SettingsPage() {
           <div className="sc-save-hero-total"><span>Default benchmark</span><strong>{AUD.format(Number(cost) || 0)}</strong></div>
         </section>
         <div className="sc-settings-grid">
+          <ChefSettings />
           <section className="sc-panel">
             <div className="sc-panel-heading"><div><h2>Your own recipe API keys</h2><p>Optional: keep cooking during a shared-key pause.</p></div></div>
             <form className="sc-settings-form" onSubmit={(event) => {

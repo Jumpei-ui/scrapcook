@@ -20,6 +20,7 @@ import {
   useMarkScrapCookRecipeMade,
 } from "@workspace/api-client-react";
 import { Link, useLocation, useRoute } from "wouter";
+import ChefButton from "@/components/chef-button";
 import FreshStartLogo from "@/components/fresh-start-logo";
 import type { RecipeDetail } from "@workspace/api-client-react";
 import CookedMealDialog from "@/components/cooked-meal-dialog";
@@ -44,6 +45,7 @@ function Header() {
         <span>Good food. Less waste.</span>
       </div>
       <nav className="sc-header-links" aria-label="Your ScrapCook">
+        <ChefButton />
         <Link href="/savings" className="sc-nav-link"><TrendingUp size={15} /> Savings</Link>
         <Link href="/settings" className="sc-nav-link">Settings</Link>
       </nav>
