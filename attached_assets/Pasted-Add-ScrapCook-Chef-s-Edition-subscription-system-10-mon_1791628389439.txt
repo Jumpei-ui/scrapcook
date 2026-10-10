@@ -1,0 +1,81 @@
+Add ScrapCook Chef's Edition subscription system - $10/month unlimited.
+
+1. STRIPE SETUP (Backend needs):
+
+Add env vars in Replit Secrets:
+STRIPE_SECRET_KEY = sk_live_...
+STRIPE_WEBHOOK_SECRET = whsec_...
+STRIPE_PRICE_ID = price_... ($10 monthly)
+
+Install: npm install stripe
+
+Create 3 endpoints:
+
+POST /api/create-checkout
+- Creates Stripe checkout session for price STRIPE_PRICE_ID
+- mode: 'subscription'
+- success_url: [yourdomain.com/success?session_id={CHECKOUT_SESSION_ID}](http://yourdomain.com/success?session_id=%7BCHECKOUT_SESSION_ID%7D)
+- cancel_url: [yourdomain.com/](http://yourdomain.com/)
+- return { url: session.url }
+
+POST /api/webhook
+- Verifies stripe signature with STRIPE_WEBHOOK_SECRET
+- On checkout.session.completed or invoice.paid:
+  Save to subscribers.json / DB: { email, customerId, active: true, expiresAt }
+- On customer.subscription.deleted:
+  Set active: false
+
+GET /api/subscription-status?email=xxx
+- Checks if user is Chef's Edition, returns { isPro: true/false }
+
+2. FREE TIER LOGIC (Update /api/getRecipes):
+
+Load usageByIp.json: { "1.2.3.4": { date: "2026-05-13", count: 2 } }
+
+If request has header X-Pro-Email and that email isPro === true:
+  -> ALLOW unlimited, skip limit
+
+Else:
+  -> If count >= 3 for today: 
+     return 429 { freeLimit: true, message: "Free limit: 3/day. Upgrade to Chef's Edition for unlimited" }
+  -> Else increment and allow
+
+Also keep your old 150/day Spoonacular safety limit on top.
+
+3. FRONTEND - UI CHANGES:
+
+A) Top right header add:
+[👨‍🍳 Chef's Edition] button - gold color
+
+If user is NOT pro:
+  Click -> POST /api/create-checkout -> redirect to Stripe
+If user IS pro:
+  Show "👨‍🍳 Pro" badge + "Unlimited"
+
+B) When free limit hit (3/day):
+Show paywall modal:
+"🥄 You've used 3 free recipes today!
+ScrapCook Chef's Edition - $10/month
+✅ Unlimited generations
+✅ Unlimited fridge/pantry scans
+✅ No ads
+[Upgrade to Chef's Edition - $10/mo] [Come back tomorrow]"
+
+C) Settings page add:
+- Input: Email to restore purchase
+- Button: "Restore Chef's Edition"
+- Button: "Manage Subscription" -> calls Stripe customer portal
+
+4. AFTER PAYMENT - /success page:
+
+Get session_id from URL, call /api/subscription-status to verify
+Save email in localStorage: localStorage.setItem("chefEmail", email)
+Show: "Welcome to Chef's Edition! 👨‍🍳 Unlimited cooking unlocked"
+Redirect to home after 3 sec
+
+5. SECURITY:
+- Never expose STRIPE_SECRET_KEY to frontend
+- Webhook must verify signature
+- Store subscribers.json server-side only
+
+Pricing: $10/month USD. Recurring. Cancel anytime in portal.
