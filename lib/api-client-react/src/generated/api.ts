@@ -402,6 +402,80 @@ export const useUpdateScrapCookSession = <TError = ErrorType<unknown>,
       return useMutation(getUpdateScrapCookSessionMutationOptions(options));
     }
 
+export const getResetScrapCookSessionUrl = () => {
+
+
+
+
+  return `/api/scrapcook/session`
+}
+
+/**
+ * @summary Clear the current recipe search while keeping settings and saved meals
+ */
+export const resetScrapCookSession = async ( options?: Parameters<typeof customFetch>[1]): Promise<ScrapCookSession> => {
+
+  return customFetch<ScrapCookSession>(getResetScrapCookSessionUrl(),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getResetScrapCookSessionMutationKey = () => ['resetScrapCookSession'] as const;
+
+export const getResetScrapCookSessionMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof resetScrapCookSession>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof resetScrapCookSession>>, TError,void, TContext> => {
+
+const mutationKey = getResetScrapCookSessionMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof resetScrapCookSession>>, void> = () => {
+
+
+          return  resetScrapCookSession(requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ResetScrapCookSessionMutationResult = NonNullable<Awaited<ReturnType<typeof resetScrapCookSession>>>
+
+    export type ResetScrapCookSessionMutationError = ErrorType<unknown>
+
+
+    /**
+ * @summary Clear the current recipe search while keeping settings and saved meals
+ */
+export const useResetScrapCookSession = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof resetScrapCookSession>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof resetScrapCookSession>>,
+        TError,
+        void,
+        TContext
+      > => {
+      return useMutation(getResetScrapCookSessionMutationOptions(options));
+    }
+
 export const getGenerateScrapCookRecipesUrl = () => {
 
 

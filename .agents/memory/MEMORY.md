@@ -5,3 +5,4 @@
 - [Protected session testing](scoped-session-testing.md) — respect cookie paths; browser scripts may lack Node environment access, so never dump credentials to work around it.
 - [Private usage policy](private-usage-policy.md) — owner-only reporting; actual calls; UTC days; bounded IP history; resets never reopen caps; Force Resume requires charge consent.
 - [OpenAPI body schemas](openapi-body-schemas.md) — use named request-body components to avoid duplicate exports between generated Zod and DTO modules.
+- [Fresh-start scope](fresh-start-scope.md) — the logo clears the recipe search, not settings, saved meals, or usage limits.

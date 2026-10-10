@@ -897,6 +897,17 @@ def get_session():
     return jsonify(session_payload())
 
 
+@app.delete("/api/scrapcook/session")
+def reset_recipe_session():
+    # Reset only this recipe search, not identity, saved meals, or preferences.
+    session.update({
+        "ingredients": [], "recipes": [], "recipeIds": [],
+        "recipeSearchKey": None, "madeRecipeIds": [], "demoMode": False,
+    })
+    session.permanent = True
+    return jsonify(session_payload())
+
+
 @app.put("/api/scrapcook/session")
 def update_session():
     body = request.get_json(silent=True) or {}

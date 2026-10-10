@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "wouter";
+import FreshStartLogo from "@/components/fresh-start-logo";
 import { useQueryClient } from "@tanstack/react-query";
 import { CSVLink } from "react-csv";
 import {
@@ -46,10 +47,10 @@ function currencyTick(value: number) {
 function AppHeader() {
   return (
     <div className="sc-savings-top">
-      <Link href="/" className="sc-savings-brand" aria-label="ScrapCook home">
+      <FreshStartLogo href="/" className="sc-savings-brand" aria-label="ScrapCook home">
         <span className="sc-brand-mark"><CookingPot size={18} /></span>
         <span>scrap<span>cook</span></span>
-      </Link>
+      </FreshStartLogo>
       <nav className="sc-savings-actions" aria-label="ScrapCook navigation">
         <Link className="sc-tool-button" href="/">Find a recipe</Link>
         <Link className="sc-tool-button" href="/settings"><Settings2 size={15} /> Settings</Link>

@@ -10,6 +10,7 @@ import {
 import type { SavingsComparisonLabel } from "@workspace/api-client-react";
 import { useToast } from "@/hooks/use-toast";
 import { useShowNutrition } from "@/hooks/use-show-nutrition";
+import FreshStartLogo from "@/components/fresh-start-logo";
 import { getPersonalRecipeKeys } from "@/lib/personal-recipe-keys";
 
 const options: SavingsComparisonLabel[] = ["Takeaway", "Uber Eats", "HelloFresh", "Woolies new shop"];
@@ -66,7 +67,7 @@ export default function SettingsPage() {
     <main className="sc-savings-shell">
       <div className="sc-savings-wrap">
         <div className="sc-savings-top">
-          <Link href="/" className="sc-savings-brand" aria-label="ScrapCook home"><span className="sc-brand-mark"><CookingPot size={18} /></span><span>scrap<span>cook</span></span></Link>
+          <FreshStartLogo href="/" className="sc-savings-brand" aria-label="ScrapCook home"><span className="sc-brand-mark"><CookingPot size={18} /></span><span>scrap<span>cook</span></span></FreshStartLogo>
           <nav className="sc-savings-actions" aria-label="ScrapCook navigation">
             <Link className="sc-tool-button" href="/savings"><ArrowLeft size={15} /> Savings dashboard</Link>
             <Link className="sc-tool-button" href="/">Find a recipe</Link>

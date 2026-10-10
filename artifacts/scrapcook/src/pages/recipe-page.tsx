@@ -20,6 +20,7 @@ import {
   useMarkScrapCookRecipeMade,
 } from "@workspace/api-client-react";
 import { Link, useLocation, useRoute } from "wouter";
+import FreshStartLogo from "@/components/fresh-start-logo";
 import type { RecipeDetail } from "@workspace/api-client-react";
 import CookedMealDialog from "@/components/cooked-meal-dialog";
 
@@ -35,10 +36,10 @@ function errorMessage(error: unknown, fallback: string) {
 function Header() {
   return (
     <header className="sc-header">
-      <Link className="sc-brand" href="/" aria-label="ScrapCook home" data-testid="link-scrapcook-home">
+      <FreshStartLogo className="sc-brand" href="/" aria-label="ScrapCook home" data-testid="link-scrapcook-home">
         <span className="sc-brand-mark"><CookingPot size={19} strokeWidth={2.3} /></span>
         <span>scrap<span>cook</span></span>
-      </Link>
+      </FreshStartLogo>
       <div className="sc-header-note">
         <span>Good food. Less waste.</span>
       </div>

@@ -85,6 +85,17 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ScrapCookSession"
+    delete:
+      operationId: resetScrapCookSession
+      tags: [scrapcook]
+      summary: Clear the current recipe search while keeping settings and saved meals
+      responses:
+        "200":
+          description: Empty recipe search session
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ScrapCookSession"
   /recipes:
     post:
       operationId: generateScrapCookRecipes

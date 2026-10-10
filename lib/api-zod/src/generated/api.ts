@@ -140,6 +140,42 @@ export const UpdateScrapCookSessionResponse = zod.object({
 
 
 /**
+ * @summary Clear the current recipe search while keeping settings and saved meals
+ */
+
+
+
+export const ResetScrapCookSessionResponse = zod.object({
+  "ingredients": zod.array(zod.string()),
+  "preferences": zod.union([zod.object({
+  "experience": zod.enum(['beginner', 'intermediate', 'pro']),
+  "timeAvailable": zod.enum(['under15', '15to30', '30to60', 'noLimit']),
+  "equipment": zod.array(zod.enum(['stove', 'oven', 'microwave', 'airFryer', 'coldMeals'])).min(1),
+  "maxReadyTime": zod.union([zod.literal(0),zod.literal(15),zod.literal(30),zod.literal(45),zod.literal(60),zod.literal(90),zod.literal(120),zod.literal(180)]).describe('Maximum recipe time in minutes; zero means no limit'),
+  "diet": zod.enum(['none', 'vegetarian', 'vegan', 'pescetarian', 'glutenFree', 'ketogenic', 'paleo'])
+}),zod.null()]),
+  "recipes": zod.array(zod.object({
+  "id": zod.string(),
+  "title": zod.string(),
+  "image": zod.string().url(),
+  "readyInMinutes": zod.number().int(),
+  "difficulty": zod.enum(['Beginner', 'Intermediate', 'Pro']),
+  "missingIngredients": zod.number().int(),
+  "servings": zod.number().int(),
+  "made": zod.boolean(),
+  "nutrition": zod.object({
+  "calories": zod.number(),
+  "protein": zod.number(),
+  "carbs": zod.number(),
+  "fat": zod.number(),
+  "fiber": zod.number()
+}).nullish()
+})),
+  "demoMode": zod.boolean()
+})
+
+
+/**
  * Both this endpoint and the legacy POST /scrapcook/recipes alias enforce
  * 20 requests per IP per rolling hour and an owner-configured global daily
  * generation cap. Daily usage is shared across instances and resets at

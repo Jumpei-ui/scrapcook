@@ -30,6 +30,7 @@ import type {
 import CookedMealDialog from "@/components/cooked-meal-dialog";
 import { useShowNutrition } from "@/hooks/use-show-nutrition";
 import IngredientScanner from "@/components/ingredient-scanner";
+import FreshStartLogo from "@/components/fresh-start-logo";
 import type { DetectResult } from "@/components/ingredient-scanner";
 import RecipesPaused from "@/components/recipes-paused";
 import { getPersonalRecipeKeys } from "@/lib/personal-recipe-keys";
@@ -144,10 +145,10 @@ function Header({ snackMode, onModeChange, onFindRecipes, disabled }: {
 }) {
   return (
     <header className="sc-header" style={{ flexWrap: "wrap", gap: 8 }}>
-      <Link className="sc-brand" href="/" aria-label="ScrapCook home" data-testid="link-scrapcook-home">
+      <FreshStartLogo className="sc-brand" href="/" aria-label="ScrapCook home" data-testid="link-scrapcook-home">
         <span className="sc-brand-mark"><CookingPot size={19} strokeWidth={2.3} /></span>
         <span>scrap<span>cook</span></span>
-      </Link>
+      </FreshStartLogo>
       <div className="sc-header-note">
         <Leaf size={15} />
         <span>Good food. Less waste.</span>
