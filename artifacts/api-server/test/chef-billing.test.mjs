@@ -18,6 +18,14 @@ test("Chef customer ownership and signed subscription lifecycle", async () => {
   let syncCalls = 0;
   let portalCustomer;
   let checkout;
+  let openSessions = [];
+  const expiredSessions = [];
+  let trialEnd = Math.floor(Date.now() / 1000) + 7 * 86400;
+  let cancelScheduled = false;
+  // Exercise the real entitlement SQL against inline fixtures, without writing
+  // Stripe-owned tables or making provider/payment requests.
+  const { Pool } = createRequire(new URL("../../../lib/db/package.json", import.meta.url))("pg");
+  const fixtureDb = new Pool({ connectionString: process.env.DATABASE_URL });
   const receipt = {
     id: "cs_fixture_receipt123", client_reference_id: "alice", customer: customers.alice,
     metadata: { scrapcook_plan: "chef" }, status: "complete", payment_status: "paid", subscription: "sub_fixture",
@@ -26,10 +34,14 @@ test("Chef customer ownership and signed subscription lifecycle", async () => {
     pool: {
       async query(sql, params) {
         if (sql.includes("SELECT customer_id")) return { rows: [{ customer_id: customers[params[0]] }] };
-        if (sql.includes("FROM stripe.subscriptions")) return {
-          rows: params[0] === "alice" && storedStatus === "active"
-            ? [{ expires_at: new Date(Date.now() + 86400000) }] : [],
-        };
+        if (sql.includes("FROM stripe.subscriptions")) {
+          const raw = { customer: customers.alice, status: storedStatus,
+            metadata: { userId: "alice" }, trial_end: trialEnd, cancel_at_period_end: cancelScheduled,
+            items: { data: [{ price: { id: "price_fixture" }, current_period_end: Math.floor(Date.now() / 1000) + 30 * 86400 }] } };
+          return fixtureDb.query(sql.replace("FROM stripe.subscriptions s JOIN chef_customers c",
+            "FROM (SELECT $3::jsonb AS _raw_data) s JOIN (SELECT $1::text AS user_id, $4::text AS customer_id) c"),
+            [...params, JSON.stringify(raw), customers[params[0]]]);
+        }
         if (sql.includes("SELECT used")) return { rows: [] };
         return { rows: [] };
       },
@@ -41,7 +53,8 @@ test("Chef customer ownership and signed subscription lifecycle", async () => {
     stripe: {
       checkout: { sessions: {
         async retrieve() { return receipt; },
-        async list() { return { data: [] }; },
+        async list(params) { return { data: params.status === "open" ? openSessions : [] }; },
+        async expire(id) { expiredSessions.push(id); },
         async create(params) { checkout = params; return { url: "https://checkout.stripe.com/fixture" }; },
       } },
       subscriptions: { async list() { return { data: [] }; } },
@@ -109,6 +122,56 @@ test("Chef customer ownership and signed subscription lifecycle", async () => {
     assert.equal(checkout.client_reference_id, "bob");
     assert.equal(checkout.line_items[0].price, "price_fixture");
     assert.equal(checkout.mode, "subscription");
+    assert.equal(checkout.subscription_data.trial_period_days, 7);
+    assert.equal(checkout.subscription_data.trial_settings.end_behavior.missing_payment_method, "cancel");
+    assert.equal(checkout.payment_method_collection, "always");
+    assert.equal(checkout.subscription_data.metadata.userId, "bob");
+    assert.equal(checkout.metadata.trial_days, "7");
+    openSessions = [{ id: "cs_old", metadata: { scrapcook_plan: "chef" }, client_reference_id: "bob",
+      url: "https://checkout.stripe.com/old" }];
+    await request("/api/create-checkout", "bob", "POST");
+    assert.deepEqual(expiredSessions, ["cs_old"], "Retire checkout links that would charge immediately");
+    openSessions = [{ id: "cs_trial", metadata: { scrapcook_plan: "chef", trial_days: "7" },
+      client_reference_id: "bob", payment_method_collection: "always", url: "https://checkout.stripe.com/trial" }];
+    assert.equal((await (await request("/api/create-checkout", "bob", "POST")).json()).url,
+      "https://checkout.stripe.com/trial", "Reuse the current trial offer");
+    openSessions = [];
+
+    canonicalStatus = "trialing";
+    receipt.payment_status = "no_payment_required";
+    const trial = await (await request("/api/subscription-status?session_id=cs_fixture_receipt123", "alice")).json();
+    assert.equal(trial.isPro, true, "Completed zero-charge trial checkout grants Pro");
+    assert.equal(trial.isTrial, true);
+    assert.equal(trial.trialDaysLeft, 7);
+    assert.equal(trial.trialEnds, trialEnd * 1000);
+    assert.ok(trial.willBeChargedOn);
+    cancelScheduled = true;
+    const cancelling = await (await request("/api/subscription-status", "alice")).json();
+    assert.equal(cancelling.isPro, true, "Trial access lasts until its end when cancellation is scheduled");
+    assert.equal(cancelling.willBeChargedOn, null, "Cancelled trial must not promise an automatic charge");
+    cancelScheduled = false;
+    trialEnd = Math.floor(Date.now() / 1000) - 1;
+    assert.equal((await (await request("/api/subscription-status", "alice")).json()).isPro, false,
+      "Expired trial cannot grant access while awaiting a webhook");
+    trialEnd = Math.floor(Date.now() / 1000) + 7 * 86400;
+    const signedEvent = async (event) => {
+      const payload = JSON.stringify(event);
+      return request("/api/webhook", null, "POST", event,
+        { "Stripe-Signature": fixtureSigner.webhooks.generateTestHeaderString({ payload, secret }) });
+    };
+    assert.equal((await signedEvent({ type: "customer.subscription.trial_will_end",
+      data: { object: { id: "sub_fixture" } } })).status, 200);
+    assert.equal((await (await request("/api/subscription-status", "alice")).json()).isTrial, true,
+      "Reminder event does not end a trial");
+    canonicalStatus = "active";
+    assert.equal((await signedEvent({ type: "invoice.paid", data: { object: {
+      parent: { subscription_details: { subscription: "sub_fixture" } },
+    } } })).status, 200);
+    const paid = await (await request("/api/subscription-status", "alice")).json();
+    assert.equal(paid.isPro, true);
+    assert.equal(paid.isTrial, false);
+    assert.equal(paid.trialDaysLeft, 0);
+    assert.equal(paid.trialEnds, null);
     const payload = JSON.stringify({ type: "customer.subscription.deleted", data: { object: { id: "sub_fixture" } } });
     assert.equal((await request("/api/webhook", null, "POST", JSON.parse(payload), { "Stripe-Signature": "forged" })).status, 400);
     assert.equal(storedStatus, "active", "Forged cancellation cannot mutate subscription state");
@@ -124,5 +187,6 @@ test("Chef customer ownership and signed subscription lifecycle", async () => {
     if (previousDomains === undefined) delete process.env.APP_PUBLIC_DOMAINS;
     else process.env.APP_PUBLIC_DOMAINS = previousDomains;
     delete globalThis.__chefFixture;
+    await fixtureDb.end();
   }
 });

@@ -565,10 +565,21 @@ components:
           type: string
     ChefSubscription:
       type: object
-      required: [isPro, email, expiresAt, freeRemaining, resetsAt, billingReady, limitsNotice]
+      required: [isPro, email, expiresAt, isTrial, trialEnds, trialDaysLeft, willBeChargedOn, freeRemaining, resetsAt, billingReady, limitsNotice]
       properties:
         isPro:
           type: boolean
+        isTrial:
+          type: boolean
+        trialEnds:
+          type: [integer, "null"]
+          description: Trial end timestamp in milliseconds since Unix epoch
+        trialDaysLeft:
+          type: integer
+          minimum: 0
+        willBeChargedOn:
+          type: [string, "null"]
+          description: UTC first-charge date for a trial, null if not trialing or cancellation is scheduled
         email:
           type: string
           nullable: true

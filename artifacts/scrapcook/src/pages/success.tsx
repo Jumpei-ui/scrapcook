@@ -3,6 +3,7 @@ import { Link, useLocation } from "wouter";
 import { useAuth } from "@clerk/react";
 import { CookingPot, LoaderCircle } from "lucide-react";
 import { useBilling, basePath } from "@/lib/billing";
+import type { ChefSubscription } from "@workspace/api-client-react";
 
 type State = "checking" | "welcome" | "unpaid" | "error" | "missing";
 
@@ -12,6 +13,7 @@ export default function SuccessPage() {
   const [, setLocation] = useLocation();
   const sessionId = new URLSearchParams(window.location.search).get("session_id");
   const [state, setState] = useState<State>(sessionId ? "checking" : "missing");
+  const [confirmed, setConfirmed] = useState<ChefSubscription>();
 
   useEffect(() => {
     if (!sessionId || !isLoaded || !isSignedIn) return;
@@ -24,6 +26,7 @@ export default function SuccessPage() {
         if (s.isPro) {
           try { if (s.email) localStorage.setItem("chefEmail", s.email); } catch { /* storage unavailable */ }
           void refresh();
+          setConfirmed(s);
           setState("welcome");
           timer = setTimeout(() => setLocation("/"), 3000);
           return;
@@ -42,16 +45,18 @@ export default function SuccessPage() {
       <div className="sc-loader-mark"><CookingPot size={22} /></div>
       {needSignIn ? (
         <>
-          <h1>Sign in to confirm your payment</h1>
+          <h1>Sign in to confirm your checkout</h1>
           <p>We'll verify your receipt as soon as you're signed in.</p>
           <Link className="sc-button sc-button-primary" href={signInUrl(`${basePath}/success?session_id=${encodeURIComponent(sessionId)}`)} data-testid="link-success-signin">Sign in</Link>
         </>
       ) : state === "welcome" ? (
-        <><h1>Welcome to Chef's Edition 👑</h1><p>You're all set. Taking you home…</p></>
+        <><h1>{confirmed?.isTrial ? "Your 7-day free trial started! 🎉" : "Welcome to Chef's Edition 👑"}</h1>
+          {confirmed?.isTrial && <p>{confirmed.willBeChargedOn ? `You won't be charged until ${confirmed.willBeChargedOn} (UTC). Then $10 USD/month unless cancelled. Enjoy unlimited cooking!` : "Your trial is active with cancellation scheduled. Enjoy unlimited cooking until it ends!"}</p>}
+          <p>You're all set. Taking you home…</p></>
       ) : state === "checking" ? (
-        <><h1>Confirming your payment…</h1><p><LoaderCircle className="sc-spin" size={16} /> This can take a few seconds.</p></>
+        <><h1>Confirming your checkout…</h1><p><LoaderCircle className="sc-spin" size={16} /> This can take a few seconds.</p></>
       ) : state === "unpaid" ? (
-        <><h1>We couldn't confirm a paid subscription yet</h1><p>If you were charged, check Settings in a minute or contact support.</p><Link className="sc-tool-button" href="/settings">Go to settings</Link></>
+        <><h1>We couldn't confirm an active subscription yet</h1><p>Check Settings in a minute to restore your subscription or trial.</p><Link className="sc-tool-button" href="/settings">Go to settings</Link></>
       ) : state === "error" ? (
         <><h1>Something went wrong verifying that receipt</h1><p>This receipt couldn't be verified for your account.</p><Link className="sc-tool-button" href="/">Back home</Link></>
       ) : (

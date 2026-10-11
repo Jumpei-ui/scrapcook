@@ -19,3 +19,9 @@ Keep the existing personal-provider-key bypass independent of subscription statu
 **Why:** Earlier requirements allowed personal keys to continue cooking while shared credits are paused; users spending their own provider credits should not need a subscription to bypass the new shared-key free allowance.
 
 **How to apply:** Validate and actually use personal keys; never treat a client flag claiming ownership as a bypass.
+
+Chef's Edition offers a seven-day free trial with a card collected upfront, then US$10/month unless cancelled.
+
+**Why:** The user's trial brief requests seven free days and recommends requiring a card upfront for the US$10 subscription.
+
+**How to apply:** Disclose no charge today, card collection, recurring billing, and cancellation before checkout. Distinguish trial access from paid access and show the trial end date. Do not retroactively change existing paid subscriptions.

@@ -41,7 +41,10 @@ router.post("/create-checkout", requireCustomer, async (_req, res) => {
     }
     // Resume unfinished checkout before blocking an incomplete subscription.
     const open = await stripe.checkout.sessions.list({ customer, status: "open", limit: 100 });
-    const reusable = open.data.find(s => s.metadata?.scrapcook_plan === "chef" && s.client_reference_id === actor.userId);
+    const owned = open.data.filter(s => s.metadata?.scrapcook_plan === "chef" && s.client_reference_id === actor.userId);
+    const reusable = owned.find(s => s.metadata?.trial_days === "7" && s.payment_method_collection === "always");
+    // Old checkout links must not charge immediately after we advertise a trial.
+    await Promise.all(owned.filter(s => s !== reusable).map(s => stripe.checkout.sessions.expire(s.id)));
     if (reusable?.url) { res.json({ url: reusable.url }); return; }
     const existing = await stripe.subscriptions.list({ customer, limit: 100, status: "all" });
     if (existing.data.some(s => ["active", "trialing", "past_due", "unpaid", "incomplete"].includes(s.status) &&
@@ -54,12 +57,17 @@ router.post("/create-checkout", requireCustomer, async (_req, res) => {
     const session = await stripe.checkout.sessions.create({
       mode: "subscription", customer, client_reference_id: actor.userId,
       line_items: [{ price: chefPriceId, quantity: 1 }],
-      metadata: { scrapcook_plan: "chef", userId: actor.userId },
-      subscription_data: { metadata: { scrapcook_plan: "chef", userId: actor.userId } },
+      metadata: { scrapcook_plan: "chef", userId: actor.userId, trial_days: "7" },
+      subscription_data: {
+        metadata: { scrapcook_plan: "chef", userId: actor.userId },
+        trial_period_days: 7,
+        trial_settings: { end_behavior: { missing_payment_method: "cancel" } },
+      },
+      payment_method_collection: "always",
       success_url: `${res.locals.billingOrigin}/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${res.locals.billingOrigin}/`,
-      custom_text: { submit: { message: "USD10/month, recurring. Cancel anytime. No personal daily quota; shared safety caps and anti-abuse limits apply." } },
-    }, { idempotencyKey: `scrapcook-checkout-${actor.userId}-${previous?.id ?? "first"}` });
+      custom_text: { submit: { message: "7 days free. Card required; no charge today, then USD10/month recurring unless cancelled before trial ends. Shared safety caps and anti-abuse limits apply." } },
+    }, { idempotencyKey: `scrapcook-checkout-trial7-${actor.userId}-${previous?.id ?? "first"}` });
     if (!session.url) throw new Error("Checkout unavailable.");
     res.json({ url: session.url });
   } catch { res.status(503).json({ error: "Could not open Stripe checkout. Please try again." }); }
@@ -98,8 +106,9 @@ router.get("/subscription-status", async (req, res) => {
           receipt.metadata?.scrapcook_plan !== "chef") {
           res.status(404).json({ error: "Purchase not found for this account." }); return;
         }
-        if (receipt.status !== "complete" || receipt.payment_status !== "paid" || typeof receipt.subscription !== "string") {
-          res.status(409).json({ error: "Payment is not complete yet. Please wait or return to checkout." }); return;
+        if (receipt.status !== "complete" ||
+          !["paid", "no_payment_required"].includes(receipt.payment_status) || typeof receipt.subscription !== "string") {
+          res.status(409).json({ error: "Checkout is not complete yet. Please wait or return to checkout." }); return;
         }
         await sync.syncSingleEntity(receipt.subscription);
       } else {

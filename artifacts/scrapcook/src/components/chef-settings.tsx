@@ -42,11 +42,12 @@ export default function ChefSettings() {
 
   return (
     <section className="sc-panel" data-testid="panel-chef-settings">
-      <div className="sc-panel-heading"><div><h2>👑 Chef's Edition</h2><p>$10 USD monthly, recurring. Cancel anytime from the billing portal.</p></div></div>
+      <div className="sc-panel-heading"><div><h2>👑 Chef's Edition</h2><p>7 days free, then $10 USD monthly, recurring. Card required. Cancel anytime from the billing portal.</p></div></div>
       <div className="sc-settings-form">
         {loading ? <div className="sc-skeleton" style={{ height: 46 }} /> : isPro ? (
           <>
-            <p className="sc-settings-success" role="status" data-testid="status-chef-pro">Active — unlimited personal quota{status?.email ? ` for ${status.email}` : ""}.</p>
+            <p className="sc-settings-success" role="status" data-testid="status-chef-pro">{status?.isTrial ? `Pro Trial — ${status.trialDaysLeft} days left` : "Active"} — unlimited personal quota{status?.email ? ` for ${status.email}` : ""}.</p>
+            {status?.isTrial && <p className="sc-hint">{status.willBeChargedOn ? `No charge until ${status.willBeChargedOn} (UTC), then $10 USD/month unless cancelled.` : "Trial cancellation is scheduled; no automatic charge."}</p>}
             {status?.expiresAt && <p className="sc-hint">Current period ends {new Date(status.expiresAt).toLocaleDateString()}. Cancel anytime; access continues until then.</p>}
             <p className="sc-hint">{status?.limitsNotice ?? "Shared safety limits and anti-abuse protections still apply."}</p>
             <button type="button" className="sc-button sc-button-primary" disabled={busy} onClick={() => void openPortal()} data-testid="button-manage-subscription">
@@ -56,7 +57,7 @@ export default function ChefSettings() {
         ) : (
           <>
             <p className="sc-hint">Free: {status?.freeRemaining ?? 3} of 3 searches left today.</p>
-            <button type="button" className="sc-button sc-button-primary" disabled={busy || (!!status && !status.billingReady)} onClick={() => void startUpgrade()} data-testid="button-settings-upgrade">Upgrade to Chef's Edition</button>
+            <button type="button" className="sc-button sc-button-primary" disabled={busy || (!!status && !status.billingReady)} onClick={() => void startUpgrade()} data-testid="button-settings-upgrade">Start My Free Trial →</button>
             {status && !status.billingReady && <p className="sc-hint">Upgrades are unavailable right now.</p>}
           </>
         )}

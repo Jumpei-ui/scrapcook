@@ -38,21 +38,36 @@ export async function customerFor(userId: string) {
   )).rows[0]?.customer_id;
 }
 export async function entitlement(userId: string | null | undefined) {
-  if (!userId || !chefPriceId) return { isPro: false, expiresAt: null };
+  const inactive = { isPro: false, expiresAt: null, isTrial: false, trialEnds: null,
+    trialDaysLeft: 0, willBeChargedOn: null };
+  if (!userId || !chefPriceId) return inactive;
   await ensureChefStore();
-  const { rows } = await pool.query<{ expires_at: Date }>(`
-    SELECT to_timestamp(COALESCE(s._raw_data->>'current_period_end',
-      s._raw_data#>>'{items,data,0,current_period_end}')::double precision) AS expires_at
+  const { rows } = await pool.query<{ expires_at: Date; is_trial: boolean; will_charge: boolean }>(`
+    SELECT to_timestamp(CASE WHEN s._raw_data->>'status'='trialing'
+      THEN (s._raw_data->>'trial_end')::double precision
+      ELSE COALESCE(s._raw_data->>'current_period_end',
+        s._raw_data#>>'{items,data,0,current_period_end}')::double precision END) AS expires_at,
+      s._raw_data->>'status'='trialing' AS is_trial,
+      NOT COALESCE((s._raw_data->>'cancel_at_period_end')::boolean, false)
+        AND s._raw_data->>'cancel_at' IS NULL AS will_charge
     FROM stripe.subscriptions s JOIN chef_customers c ON c.customer_id=s._raw_data->>'customer'
-    WHERE c.user_id=$1 AND s._raw_data->>'status'='active'
+    WHERE c.user_id=$1 AND s._raw_data->>'status' IN ('active','trialing')
       AND s._raw_data#>>'{metadata,userId}'=$1
       AND EXISTS(SELECT 1 FROM jsonb_array_elements(s._raw_data#>'{items,data}') item
         WHERE item#>>'{price,id}'=$2)
-      AND COALESCE(s._raw_data->>'current_period_end',
-        s._raw_data#>>'{items,data,0,current_period_end}')::double precision > EXTRACT(EPOCH FROM now())
+      AND CASE WHEN s._raw_data->>'status'='trialing'
+        THEN (s._raw_data->>'trial_end')::double precision
+        ELSE COALESCE(s._raw_data->>'current_period_end',
+          s._raw_data#>>'{items,data,0,current_period_end}')::double precision END > EXTRACT(EPOCH FROM now())
     ORDER BY expires_at DESC LIMIT 1
   `, [userId, chefPriceId]);
-  return { isPro: !!rows.length, expiresAt: rows[0]?.expires_at.toISOString() ?? null };
+  const row = rows[0];
+  if (!row) return inactive;
+  const trialEnds = row.is_trial ? row.expires_at.getTime() : null;
+  return { isPro: true, expiresAt: row.expires_at.toISOString(), isTrial: row.is_trial,
+    trialEnds, trialDaysLeft: trialEnds ? Math.max(0, Math.ceil((trialEnds - Date.now()) / 86400000)) : 0,
+    willBeChargedOn: row.is_trial && row.will_charge
+      ? row.expires_at.toLocaleDateString("en-US", { timeZone: "UTC", year: "numeric", month: "long", day: "numeric" }) : null };
 }
 export function nextUtcMidnight() {
   const next = new Date(); next.setUTCHours(24, 0, 0, 0); return next.toISOString();

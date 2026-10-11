@@ -1,0 +1,83 @@
+Add 7-day free trial to Chef's Edition.
+
+1. STRIPE DASHBOARD - Update your product:
+
+Go to Stripe Dashboard -> Products -> Chef's Edition Price
+Edit -> Add free trial -> 7 days -> Save
+Copy new Price ID if it changed, update STRIPE_PRICE_ID in Replit Secrets
+
+OR do it in code (better - no dashboard change needed):
+
+In POST /api/create-checkout, add to session creation:
+
+const session = await stripe.checkout.sessions.create({
+  mode: 'subscription',
+  line_items: [{ price: process.env.STRIPE_PRICE_ID, quantity: 1 }],
+  subscription_data: {
+    trial_period_days: 7,
+    trial_settings: {
+      end_behavior: { missing_payment_method: 'cancel' }
+    }
+  },
+  payment_method_collection: 'if_required', // don't ask card until trial ends? Set to 'always' if you want card upfront
+  success_url:...,
+  cancel_url:...,
+});
+
+Set to:
+- payment_method_collection: 'always' = they enter card now, charged after 7 days (converts better)
+- payment_method_collection: 'if_required' = no card needed for trial (more signups, less conversions)
+
+Recommended: Use 'always' for $10 product.
+
+2. UPDATE WEBHOOK LOGIC:
+
+In /api/webhook, handle trial correctly:
+
+If event.type === 'checkout.session.completed':
+  trial_end = subscription.trial_end * 1000
+  Save { email, active: true, isTrial: true, trialEnds: trial_end }
+
+If event.type === 'customer.subscription.trial_will_end':
+  (Stripe sends 3 days before) - you can send reminder email later if you add email
+
+If invoice.paid after trial -> isTrial: false, active: true
+
+3. FRONTEND - Update paywall copy:
+
+Change modal to:
+
+"🎉 Try Chef's Edition FREE for 7 Days!
+👨‍🍳 Unlimited recipes
+📸 Unlimited fridge/pantry scans
+🚫 No charge today - cancel anytime
+
+[Start My Free Trial ->]
+No charge for 7 days, then $10/mo"
+
+And update header button:
+Was: [👨‍🍳 Chef's Edition]
+Now: [👨‍🍳 Try Pro Free]
+
+If user is in trial:
+Show badge: "👨‍🍳 Pro Trial - 5 days left"
+
+Calculate days left: Math.ceil((trialEnds - Date.now())/86400000)
+
+4. UPDATE /api/subscription-status:
+
+Return more detail:
+{
+  isPro: true,
+  isTrial: true,
+  trialDaysLeft: 5,
+  willBeChargedOn: "May 20, 2026"
+}
+
+5. SUCCESS PAGE:
+
+If session was trial, show:
+"Your 7-day free trial started! 🎉
+You won't be charged until [date]. Enjoy unlimited cooking!"
+
+That's it. Stripe handles the trial, the reminder, the charge, and the cancel if card fails.

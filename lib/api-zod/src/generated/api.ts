@@ -32,8 +32,16 @@ export const GetChefSubscriptionQueryParams = zod.object({
   "email": zod.coerce.string().optional().describe('Optional restore email; must match the verified signed-in account')
 })
 
+export const getChefSubscriptionResponseTrialDaysLeftMin = 0;
+
+
+
 export const GetChefSubscriptionResponse = zod.object({
   "isPro": zod.boolean(),
+  "isTrial": zod.boolean(),
+  "trialEnds": zod.number().int().nullable().describe('Trial end timestamp in milliseconds since Unix epoch'),
+  "trialDaysLeft": zod.number().int().min(getChefSubscriptionResponseTrialDaysLeftMin),
+  "willBeChargedOn": zod.string().nullable().describe('UTC first-charge date for a trial, null if not trialing or cancellation is scheduled'),
   "email": zod.string().nullable(),
   "expiresAt": zod.string().nullable(),
   "freeRemaining": zod.number().int(),

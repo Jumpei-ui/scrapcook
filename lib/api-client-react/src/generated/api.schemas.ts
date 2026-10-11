@@ -11,6 +11,19 @@ export interface ChefRedirect {
 
 export interface ChefSubscription {
   isPro: boolean;
+  isTrial: boolean;
+  /**
+     * Trial end timestamp in milliseconds since Unix epoch
+     * @nullable
+     */
+  trialEnds: number | null;
+  /** @minimum 0 */
+  trialDaysLeft: number;
+  /**
+     * UTC first-charge date for a trial, null if not trialing or cancellation is scheduled
+     * @nullable
+     */
+  willBeChargedOn: string | null;
   email: string | null;
   expiresAt: string | null;
   freeRemaining: number;

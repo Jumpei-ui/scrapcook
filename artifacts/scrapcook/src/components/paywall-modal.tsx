@@ -14,20 +14,22 @@ export default function PaywallModal({ detail, onClose }: { detail: LimitDetail 
           {detail?.message ?? "Free ScrapCook includes 3 generations per day."}{reset ? ` Resets ${reset}.` : ""}
         </DialogDescription>
         <div style={{ border: "1px solid #d9b44a", background: "#fff8dc", borderRadius: 14, padding: 16 }}>
-          <strong style={{ fontSize: 18 }}>👑 Chef's Edition — $10 USD / month</strong>
+          <strong style={{ fontSize: 18 }}>🎉 Try Chef's Edition FREE for 7 Days!</strong>
           <ul style={{ margin: "8px 0 0 18px", listStyle: "disc", fontSize: 14 }}>
-            <li>Unlimited recipe generations &amp; ingredient scans</li>
+            <li>👨‍🍳 Unlimited recipes</li>
+            <li>📸 Unlimited fridge/pantry scans</li>
             <li>No ads</li>
-            <li>Recurring monthly, cancel anytime</li>
+            <li>🚫 No charge today — cancel anytime</li>
           </ul>
         </div>
+        <p className="sc-hint">Card required. No charge for 7 days, then $10 USD/month, recurring unless cancelled.</p>
         <p className="sc-hint" data-testid="text-paywall-notice">
           Paid access removes your personal daily quota. Shared safety limits and temporary anti-abuse protections still apply.
         </p>
         {unavailable && <p className="sc-form-error" role="status">Upgrades are unavailable right now. Please try again later.</p>}
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
           <button type="button" className="sc-button sc-button-primary" disabled={busy || unavailable} onClick={() => void startUpgrade()} data-testid="button-paywall-upgrade">
-            {busy ? <LoaderCircle className="sc-spin" size={16} /> : <Crown size={16} />} Upgrade to Chef's Edition
+            {busy ? <LoaderCircle className="sc-spin" size={16} /> : <Crown size={16} />} Start My Free Trial →
           </button>
           <button type="button" className="sc-tool-button" onClick={onClose} data-testid="button-paywall-tomorrow">Return tomorrow</button>
         </div>
